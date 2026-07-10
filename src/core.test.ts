@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { mergeConfig, DEFAULT_CONFIG, normalizeCollapseOnSelect } from './config';
-import { scaleColor } from './color-scale';
-import { isoOf, pickIso, expandCountryFeatures, featureName } from './iso';
-import { filterLegendEntries, mergeLegendByIso, paginateItems } from './legend-query';
-import { createToastState, dismissToast, pushToast } from './toast';
-import type { LegendEntry } from './types';
-import { buildValueIndex, parseDataRows } from './value-index';
+import { mergeConfig, DEFAULT_CONFIG, normalizeCollapseOnSelect } from './config.js';
+import { scaleColor } from './color-scale.js';
+import { isoOf, pickIso, expandCountryFeatures, featureName } from './iso.js';
+import { filterLegendEntries, mergeLegendByIso, paginateItems } from './legend-query.js';
+import { createToastState, dismissToast, pushToast } from './toast.js';
+import type { LegendEntry } from './types.js';
+import { buildValueIndex, parseDataRows } from './value-index.js';
 
 describe('mergeConfig', () => {
 	it('returns defaults for nullish input', () => {
@@ -107,7 +107,7 @@ describe('legend-query', () => {
 		const fr = merged.find((e) => e.iso === 'FR');
 		expect(fr?.name).toBe('France (remote)');
 		expect(fr?.value).toBe(99);
-		expect(merged[0].iso).toBe('FR');
+		expect(merged[0]?.iso).toBe('FR');
 	});
 });
 
@@ -189,7 +189,7 @@ describe('iso', () => {
 				},
 			},
 		]);
-		expect(packed[0].geometry?.coordinates).toEqual([
+		expect(packed[0]?.geometry?.coordinates).toEqual([
 			[
 				[61.2, 35.7],
 				[62, 35],
@@ -201,16 +201,19 @@ describe('iso', () => {
 
 describe('featuresFromTopology', () => {
 	it('expands shipped TopoJSON into GeoJSON features', async () => {
-		const { featuresFromTopology } = await import('./load-countries');
+		const { featuresFromTopology } = await import('./load-countries.js');
 		const topology = await import('./data/ne_110m_admin_0_countries.json');
-		const topo = (topology as { default?: unknown }).default ?? topology;
-		const features = featuresFromTopology(topo as never);
+		const topo = 'default' in topology ? topology.default : topology;
+		const features = featuresFromTopology(topo as Parameters<typeof featuresFromTopology>[0]);
 		expect(features.length).toBe(177);
 		const af = features.find((f) => f.properties.i === 'AF');
 		expect(af?.properties.n).toBe('Afghanistan');
-		const ring = af?.geometry?.coordinates as number[][][];
-		expect(ring[0][0][0]).toBeGreaterThan(60);
-		expect(ring[0][0][0]).toBeLessThan(70);
+		const ring = af?.geometry?.coordinates;
+		expect(Array.isArray(ring)).toBe(true);
+		const first = Array.isArray(ring) && Array.isArray(ring[0]) ? ring[0][0] : undefined;
+		const lng = Array.isArray(first) ? first[0] : undefined;
+		expect(typeof lng === 'number' && lng > 60).toBe(true);
+		expect(typeof lng === 'number' && lng < 70).toBe(true);
 	});
 });
 
@@ -237,7 +240,9 @@ describe('toast reducer', () => {
 		});
 		expect(state.items).toHaveLength(2);
 		expect(state.items.map((t) => t.title)).toEqual(['B', 'C']);
-		state = dismissToast(state, state.items[0].id);
+		const firstId = state.items[0]?.id;
+		expect(firstId).toBeDefined();
+		state = dismissToast(state, firstId!);
 		expect(state.items).toHaveLength(1);
 	});
 

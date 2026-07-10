@@ -1,4 +1,6 @@
 import type { DataRow, PointOfView } from './types.js';
+import { definedProps, isRecord } from './types.js';
+import { isOneOf } from './util.js';
 
 export type ToastPosition = 'bottom-end' | 'bottom-start' | 'top-end' | 'top-start';
 
@@ -142,7 +144,7 @@ export type GlobeChartConfigInput = {
 	toasts?: Partial<ToastsConfig>;
 };
 
-export const DEFAULT_CONFIG: GlobeChartConfig = {
+export const DEFAULT_CONFIG = {
 	legend: {
 		title: 'By country',
 		subtitle: '',
@@ -191,13 +193,25 @@ export const DEFAULT_CONFIG: GlobeChartConfig = {
 		persistWarnings: false,
 		warningDismissMs: 8000,
 	},
-};
+} satisfies GlobeChartConfig;
 
-const KNOWN_ROOT_KEYS = new Set(['legend', 'colors', 'labels', 'camera', 'globe', 'toasts']);
+const KNOWN_ROOT_KEYS: ReadonlySet<string> = new Set([
+	'legend',
+	'colors',
+	'labels',
+	'camera',
+	'globe',
+	'toasts',
+]);
 
-const COLLAPSE_MODES = ['never', 'always', 'mobile'] as const;
-const SEARCH_MODES = ['local', 'remote', 'hybrid'] as const;
-const TOAST_POSITIONS = ['bottom-end', 'bottom-start', 'top-end', 'top-start'] as const;
+const COLLAPSE_MODES = ['never', 'always', 'mobile'] as const satisfies readonly LegendCollapseMode[];
+const SEARCH_MODES = ['local', 'remote', 'hybrid'] as const satisfies readonly LegendSearchMode[];
+const TOAST_POSITIONS = [
+	'bottom-end',
+	'bottom-start',
+	'top-end',
+	'top-start',
+] as const satisfies readonly ToastPosition[];
 const LEGEND_POSITIONS = ['left', 'right'] as const;
 
 export interface ConfigMergeResult {
@@ -218,7 +232,7 @@ export function mergeConfig(input?: unknown): ConfigMergeResult {
 		};
 	}
 
-	if (typeof input !== 'object' || Array.isArray(input)) {
+	if (!isRecord(input) || Array.isArray(input)) {
 		return {
 			config: cloneConfig(DEFAULT_CONFIG),
 			unknownKeys: [],
@@ -227,9 +241,8 @@ export function mergeConfig(input?: unknown): ConfigMergeResult {
 		};
 	}
 
-	const raw = input as Record<string, unknown>;
-	const unknownKeys = Object.keys(raw).filter((key) => !KNOWN_ROOT_KEYS.has(key));
-	const partial = raw as GlobeChartConfigInput;
+	const unknownKeys = Object.keys(input).filter((key) => !KNOWN_ROOT_KEYS.has(key));
+	const partial = input as GlobeChartConfigInput;
 	const invalidPaths: string[] = [];
 
 	const config = cloneConfig(DEFAULT_CONFIG);
@@ -239,23 +252,20 @@ export function mergeConfig(input?: unknown): ConfigMergeResult {
 		assignLegendScalars(config.legend, legendRest, invalidPaths);
 		if (search) assignSearch(config.legend.search, search, invalidPaths);
 		if (collapseOnSelect !== undefined) {
-			if (
-				typeof collapseOnSelect === 'string' &&
-				!COLLAPSE_MODES.includes(collapseOnSelect as LegendCollapseOnSelect)
-			) {
+			if (typeof collapseOnSelect === 'string' && !isOneOf(collapseOnSelect, COLLAPSE_MODES)) {
 				invalidPaths.push('legend.collapseOnSelect');
 			}
 			config.legend.collapseOnSelect = normalizeCollapseOnSelect(collapseOnSelect);
 		}
 	}
-	if (partial.colors) Object.assign(config.colors, pickDefined(partial.colors));
-	if (partial.labels) Object.assign(config.labels, pickDefined(partial.labels));
+	if (partial.colors) Object.assign(config.colors, definedProps(partial.colors));
+	if (partial.labels) Object.assign(config.labels, definedProps(partial.labels));
 	if (partial.globe) assignGlobe(config.globe, partial.globe, invalidPaths);
 	if (partial.toasts) assignToasts(config.toasts, partial.toasts, invalidPaths);
 
 	if (partial.camera) {
 		const { initial, jumpAltitude, durations } = partial.camera;
-		if (initial) Object.assign(config.camera.initial, pickDefined(initial));
+		if (initial) Object.assign(config.camera.initial, definedProps(initial));
 		if (jumpAltitude != null) {
 			if (typeof jumpAltitude === 'number' && Number.isFinite(jumpAltitude)) {
 				config.camera.jumpAltitude = jumpAltitude;
@@ -275,7 +285,7 @@ export function normalizeCollapseOnSelect(
 ): LegendCollapseOnSelect {
 	if (value === true) return 'always';
 	if (value === false) return 'never';
-	if (value === 'never' || value === 'mobile' || value === 'always') return value;
+	if (isOneOf(value, COLLAPSE_MODES)) return value;
 	return 'mobile';
 }
 
@@ -284,18 +294,18 @@ function assignLegendScalars(
 	input: Partial<Omit<LegendConfig, 'search' | 'collapseOnSelect' | 'formatValue'>>,
 	invalidPaths: string[],
 ) {
-	const next = pickDefined(input);
+	const next = definedProps(input);
 	if (next.collapseMode !== undefined) {
-		if (COLLAPSE_MODES.includes(next.collapseMode as LegendCollapseMode)) {
-			target.collapseMode = next.collapseMode as LegendCollapseMode;
+		if (isOneOf(next.collapseMode, COLLAPSE_MODES)) {
+			target.collapseMode = next.collapseMode;
 		} else {
 			invalidPaths.push('legend.collapseMode');
 		}
 		delete next.collapseMode;
 	}
 	if (next.position !== undefined) {
-		if (LEGEND_POSITIONS.includes(next.position as 'left' | 'right')) {
-			target.position = next.position as 'left' | 'right';
+		if (isOneOf(next.position, LEGEND_POSITIONS)) {
+			target.position = next.position;
 		} else {
 			invalidPaths.push('legend.position');
 		}
@@ -323,19 +333,20 @@ function assignSearch(
 	input: Partial<LegendSearchConfig>,
 	invalidPaths: string[],
 ) {
-	const next = pickDefined(input);
+	const next = definedProps(input);
 	if (next.mode !== undefined) {
-		if (SEARCH_MODES.includes(next.mode as LegendSearchMode)) {
-			target.mode = next.mode as LegendSearchMode;
+		if (isOneOf(next.mode, SEARCH_MODES)) {
+			target.mode = next.mode;
 		} else {
 			invalidPaths.push('legend.search.mode');
 		}
 		delete next.mode;
 	}
 	for (const key of ['debounceMs', 'minLength'] as const) {
-		if (next[key] !== undefined) {
-			if (typeof next[key] === 'number' && Number.isFinite(next[key] as number)) {
-				target[key] = next[key] as number;
+		const value = next[key];
+		if (value !== undefined) {
+			if (typeof value === 'number' && Number.isFinite(value)) {
+				target[key] = value;
 			} else {
 				invalidPaths.push(`legend.search.${key}`);
 			}
@@ -354,10 +365,10 @@ function assignToasts(
 	input: Partial<ToastsConfig>,
 	invalidPaths: string[],
 ) {
-	const next = pickDefined(input);
+	const next = definedProps(input);
 	if (next.position !== undefined) {
-		if (TOAST_POSITIONS.includes(next.position as ToastPosition)) {
-			target.position = next.position as ToastPosition;
+		if (isOneOf(next.position, TOAST_POSITIONS)) {
+			target.position = next.position;
 		} else {
 			invalidPaths.push('toasts.position');
 		}
@@ -387,7 +398,7 @@ function assignGlobe(
 	input: Partial<GlobeVisualConfig>,
 	invalidPaths: string[],
 ) {
-	const next = pickDefined(input);
+	const next = definedProps(input);
 	for (const key of [
 		'atmosphereAltitude',
 		'curvatureDeg',
@@ -408,24 +419,17 @@ function assignDurations(
 	input: Partial<CameraConfig['durations']>,
 	invalidPaths: string[],
 ) {
-	const next = pickDefined(input);
+	const next = definedProps(input);
 	for (const key of ['navigate', 'reveal', 'polygon'] as const) {
-		if (next[key] !== undefined) {
-			if (typeof next[key] === 'number' && Number.isFinite(next[key] as number)) {
-				target[key] = next[key] as number;
+		const value = next[key];
+		if (value !== undefined) {
+			if (typeof value === 'number' && Number.isFinite(value)) {
+				target[key] = value;
 			} else {
 				invalidPaths.push(`camera.durations.${key}`);
 			}
 		}
 	}
-}
-
-function pickDefined<T extends object>(obj: T): Partial<T> {
-	const out: Partial<T> = {};
-	for (const [key, value] of Object.entries(obj) as [keyof T, T[keyof T]][]) {
-		if (value !== undefined) out[key] = value;
-	}
-	return out;
 }
 
 function cloneConfig(config: GlobeChartConfig): GlobeChartConfig {

@@ -31,9 +31,12 @@ import type {
 	DataRow,
 	FeedbackEventDetail,
 	GeoFeature,
+	GlobeChartEventMap,
 	LegendEntry,
+	LegendSearchEventDetail,
 	ThemeColors,
 } from './types.js';
+import { assertNever, definedProps, isGeoFeature } from './types.js';
 import { renderLegend } from './ui/legend.js';
 import { globeChartStyles } from './ui/styles.js';
 import { renderToasts } from './ui/toasts.js';
@@ -43,6 +46,32 @@ import { yieldToMain } from './yield-main.js';
 @customElement('globe-chart')
 export class GlobeChart extends LitElement {
 	static override styles = globeChartStyles;
+
+	declare addEventListener: {
+		<K extends keyof GlobeChartEventMap>(
+			type: K,
+			listener: (this: GlobeChart, ev: GlobeChartEventMap[K]) => void,
+			options?: boolean | AddEventListenerOptions,
+		): void;
+		(
+			type: string,
+			listener: EventListenerOrEventListenerObject,
+			options?: boolean | AddEventListenerOptions,
+		): void;
+	};
+
+	declare removeEventListener: {
+		<K extends keyof GlobeChartEventMap>(
+			type: K,
+			listener: (this: GlobeChart, ev: GlobeChartEventMap[K]) => void,
+			options?: boolean | EventListenerOptions,
+		): void;
+		(
+			type: string,
+			listener: EventListenerOrEventListenerObject,
+			options?: boolean | EventListenerOptions,
+		): void;
+	};
 
 	@property({ type: Array }) data: DataRow[] = [];
 
@@ -110,15 +139,15 @@ export class GlobeChart extends LitElement {
 	private polygonClickBound = false;
 	/** Defer WebGL until the host is near the viewport (demo/pages cold load). */
 	private visibleEnough = typeof IntersectionObserver === 'undefined';
-	private visibilityObserver?: IntersectionObserver;
-	private revealTimer?: ReturnType<typeof setTimeout>;
+	private visibilityObserver: IntersectionObserver | undefined;
+	private revealTimer: ReturnType<typeof setTimeout> | undefined;
 	private warningTimers = new Map<string, ReturnType<typeof setTimeout>>();
 	private readyDispatched = false;
 	private lastSkipSignature = '';
-	private searchDebounceTimer?: ReturnType<typeof setTimeout>;
-	private searchAbort?: AbortController;
-	private colorSchemeMq?: MediaQueryList;
-	private legendBreakpointMq?: MediaQueryList;
+	private searchDebounceTimer: ReturnType<typeof setTimeout> | undefined;
+	private searchAbort: AbortController | undefined;
+	private colorSchemeMq: MediaQueryList | undefined;
+	private legendBreakpointMq: MediaQueryList | undefined;
 	private readonly onColorSchemeChange = () => {
 		if (this.theme === 'auto' && this.scene.globe) this.applyVisual(false);
 	};
@@ -228,7 +257,7 @@ export class GlobeChart extends LitElement {
 					color: scaleColor(value, index.maxValue, colors),
 					lat: center.lat,
 					lng: center.lng,
-					row,
+					...definedProps({ row }),
 				};
 			})
 			.filter((entry): entry is LegendEntry => entry !== null)
@@ -247,9 +276,16 @@ export class GlobeChart extends LitElement {
 		const remoteEntries =
 			mode === 'local' ? [] : this.hitsToEntries(this.effectiveRemoteHits(), all);
 
-		if (mode === 'local') return local;
-		if (mode === 'remote') return remoteEntries.length ? remoteEntries : local;
-		return mergeLegendByIso(local, remoteEntries);
+		switch (mode) {
+			case 'local':
+				return local;
+			case 'remote':
+				return remoteEntries.length ? remoteEntries : local;
+			case 'hybrid':
+				return mergeLegendByIso(local, remoteEntries);
+			default:
+				return assertNever(mode);
+		}
 	}
 
 	private effectiveRemoteHits(): LegendSearchHit[] {
@@ -283,7 +319,7 @@ export class GlobeChart extends LitElement {
 				color: scaleColor(value, index.maxValue, colors),
 				lat: center.lat,
 				lng: center.lng,
-				row: existing?.row ?? index.rowByIso[iso],
+				...definedProps({ row: existing?.row ?? index.rowByIso[iso] }),
 			});
 		}
 
@@ -325,7 +361,7 @@ export class GlobeChart extends LitElement {
 		const abort = new AbortController();
 		this.searchAbort = abort;
 
-		const detail = { query, signal: abort.signal };
+		const detail: LegendSearchEventDetail = { query, signal: abort.signal };
 		this.dispatchEvent(
 			new CustomEvent('legend-search', { detail, bubbles: true, composed: true }),
 		);
@@ -672,7 +708,8 @@ export class GlobeChart extends LitElement {
 
 	private handlePolygonClick(poly: object) {
 		if (this.loading) return;
-		const feature = poly as GeoFeature;
+		if (!isGeoFeature(poly)) return;
+		const feature = poly;
 		const iso = isoOf(feature);
 		if (!iso) return;
 		const index = this.computeIndex();
@@ -692,7 +729,7 @@ export class GlobeChart extends LitElement {
 			color: scaleColor(value, index.maxValue, colors),
 			lat: center.lat,
 			lng: center.lng,
-			row: index.rowByIso[iso],
+			...definedProps({ row: index.rowByIso[iso] }),
 		};
 		this.jumpTo(entry);
 	}
@@ -818,8 +855,7 @@ export class GlobeChart extends LitElement {
 			level: latest.level,
 			title: latest.title,
 			body: latest.body,
-			details: latest.details,
-			code: input.code,
+			...definedProps({ details: latest.details, code: input.code }),
 		};
 		if (latest.level === 'error') {
 			this.dispatchEvent(new CustomEvent('error', { detail, bubbles: true, composed: true }));
@@ -850,9 +886,11 @@ export class GlobeChart extends LitElement {
 			name: entry.name,
 			value: entry.value,
 			color: entry.color,
-			lat: entry.lat,
-			lng: entry.lng,
-			row: entry.row,
+			...definedProps({
+				lat: entry.lat,
+				lng: entry.lng,
+				row: entry.row,
+			}),
 		};
 		this.dispatchEvent(new CustomEvent(name, { detail, bubbles: true, composed: true }));
 	}
@@ -885,5 +923,12 @@ export class GlobeChart extends LitElement {
 declare global {
 	interface HTMLElementTagNameMap {
 		'globe-chart': GlobeChart;
+	}
+
+	interface HTMLElementEventMap {
+		ready: CustomEvent<undefined>;
+		'country-select': CustomEvent<CountryEventDetail>;
+		'country-hover': CustomEvent<CountryEventDetail>;
+		'legend-search': CustomEvent<LegendSearchEventDetail>;
 	}
 }

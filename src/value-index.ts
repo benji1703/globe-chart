@@ -1,7 +1,8 @@
 import type { DataRow, SkippedRow, ValueIndexResult } from './types.js';
+import { isDataRow } from './types.js';
 
 export interface ValueIndexOptions {
-	data: DataRow[];
+	data: readonly DataRow[];
 	isoField: string;
 	valueField: string;
 }
@@ -28,8 +29,8 @@ export function parseDataRows(input: unknown): ParseDataRowsResult {
 	const rows: DataRow[] = [];
 	let dropped = 0;
 	for (const item of input) {
-		if (item != null && typeof item === 'object' && !Array.isArray(item)) {
-			rows.push(item as DataRow);
+		if (isDataRow(item)) {
+			rows.push(item);
 		} else {
 			dropped += 1;
 		}

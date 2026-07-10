@@ -5,14 +5,17 @@ import type {
 	GlobeChartConfigInput,
 	LegendCollapseMode,
 	LegendCollapseOnSelect,
+	LegendSearchHit,
 	LegendSearchMode,
 	ToastPosition,
-} from '../src/config';
-import { globeChartMockData } from '../src/globe-chart.mock-data';
+} from '../src/config.js';
+import { globeChartMockData } from '../src/globe-chart.mock-data.js';
+import type { DataRow } from '../src/types.js';
+import { definedProps } from '../src/types.js';
 
 /** Flat Storybook controls — assembled into `config` + element props at render time. */
 export type PlaygroundArgs = {
-	data: Record<string, unknown>[];
+	data: DataRow[];
 	isoField: string;
 	valueField: string;
 	nameField: string;
@@ -88,7 +91,7 @@ function buildConfig(args: PlaygroundArgs): GlobeChartConfigInput {
 		minLength: args.searchMinLength,
 		...(args.useRemoteProvider && (args.searchMode === 'remote' || args.searchMode === 'hybrid')
 			? {
-					provider: async (query: string) => {
+					provider: async (query: string): Promise<LegendSearchHit[]> => {
 						const q = query.toLowerCase();
 						await new Promise((r) => setTimeout(r, 120));
 						return args.data
@@ -99,8 +102,13 @@ function buildConfig(args: PlaygroundArgs): GlobeChartConfigInput {
 							})
 							.map((row) => ({
 								iso: String(row[args.isoField]),
-								name: row[args.nameField] != null ? String(row[args.nameField]) : undefined,
 								value: Number(row[args.valueField]),
+								...definedProps({
+									name:
+										row[args.nameField] != null
+											? String(row[args.nameField])
+											: undefined,
+								}),
 							}));
 					},
 				}
@@ -123,13 +131,13 @@ function buildConfig(args: PlaygroundArgs): GlobeChartConfigInput {
 			toggleLabel: args.toggleLabel,
 			search,
 		},
-		colors: {
+		colors: definedProps({
 			ocean: optionalColor(args.colorOcean),
 			empty: optionalColor(args.colorEmpty),
 			low: optionalColor(args.colorLow),
 			high: optionalColor(args.colorHigh),
 			stroke: optionalColor(args.colorStroke),
-		},
+		}),
 		camera: {
 			initial: {
 				lat: args.cameraLat,
@@ -232,7 +240,7 @@ const meta: Meta<PlaygroundArgs> = {
 	render: (args, { globals }) => {
 		const theme =
 			args.themeSource === 'toolbar'
-				? globals.theme === 'dark'
+				? globals['theme'] === 'dark'
 					? 'dark'
 					: 'light'
 				: args.themeSource;

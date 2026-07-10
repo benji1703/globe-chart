@@ -1,5 +1,4 @@
 import type { GlobeInstance } from 'globe.gl';
-import type { WebGLRenderer } from 'three';
 
 import type { GlobeChartConfig } from '../config.js';
 import type { PointOfView } from '../types.js';
@@ -12,7 +11,7 @@ export interface GlobeSceneOptions {
 
 export class GlobeScene {
 	globe: GlobeInstance | null = null;
-	private resizeObserver?: ResizeObserver;
+	private resizeObserver: ResizeObserver | undefined;
 	private element: HTMLElement | null = null;
 
 	async create(options: GlobeSceneOptions): Promise<GlobeInstance> {
@@ -36,11 +35,9 @@ export class GlobeScene {
 
 		// Cap DPR — full retina + 177 country meshes is a common long-task source.
 		try {
-			const renderer = (
-				this.globe as GlobeInstance & { renderer?: () => WebGLRenderer }
-			).renderer?.();
+			const renderer = this.globe.renderer();
 			const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
-			renderer?.setPixelRatio?.(Math.min(dpr, 1.5));
+			renderer.setPixelRatio(Math.min(dpr, 1.5));
 		} catch {
 			/* renderer may not be ready yet */
 		}
@@ -84,11 +81,9 @@ export class GlobeScene {
 
 		if (globe) {
 			try {
-				const renderer = (
-					globe as GlobeInstance & { renderer?: () => WebGLRenderer }
-				).renderer?.();
-				renderer?.forceContextLoss?.();
-				renderer?.dispose?.();
+				const renderer = globe.renderer();
+				renderer.forceContextLoss();
+				renderer.dispose();
 			} catch {
 				/* renderer may already be gone */
 			}

@@ -5,17 +5,22 @@ import type { GlobeChartConfig } from '../config.js';
 import { featureName, isoOf } from '../iso.js';
 import { landCapMaterial, solidColorImage } from '../materials.js';
 import type { GeoFeature, ThemeColors, ValueIndexResult } from '../types.js';
+import { definedProps, isGeoFeature } from '../types.js';
 import { escapeHtml, formatValue } from '../ui/format.js';
 
 export interface ChoroplethPaintOptions {
 	globe: GlobeInstance;
-	features: GeoFeature[];
+	features: readonly GeoFeature[];
 	index: ValueIndexResult;
 	colors: ThemeColors;
 	config: GlobeChartConfig;
 	loading: boolean;
 	transitionMs: number;
 	nameField?: string;
+}
+
+function featureFromPolygon(poly: object): GeoFeature | null {
+	return isGeoFeature(poly) ? poly : null;
 }
 
 export class ChoroplethLayer {
@@ -27,7 +32,7 @@ export class ChoroplethLayer {
 
 		if (loading) {
 			globe
-				.polygonsData(features)
+				.polygonsData([...features])
 				.globeImageUrl(solidColorImage(colors.ocean))
 				.backgroundColor('rgba(0,0,0,0)')
 				.atmosphereColor(colors.ocean)
@@ -49,7 +54,7 @@ export class ChoroplethLayer {
 		// Prefer CapMaterial (polygonOffset / depthWrite). CapColor alone is enough for
 		// picking/labels; avoid a second per-feature color pass when materials are set.
 		globe
-			.polygonsData(features)
+			.polygonsData([...features])
 			.globeImageUrl(solidColorImage(colors.ocean))
 			.backgroundColor('rgba(0,0,0,0)')
 			.atmosphereColor(colors.ocean)
@@ -57,14 +62,16 @@ export class ChoroplethLayer {
 			.polygonAltitude(config.globe.polygonAltitude)
 			.polygonCapCurvatureResolution(config.globe.curvatureDeg)
 			.polygonCapMaterial((feat) => {
-				const iso = isoOf(feat as GeoFeature);
+				const feature = featureFromPolygon(feat);
+				const iso = feature ? isoOf(feature) : '';
 				const value = valueMap[iso] ?? 0;
 				return landCapMaterial(scaleColor(value, maxValue, colors));
 			})
 			.polygonSideColor(() => 'rgba(0,0,0,0)')
 			.polygonStrokeColor(() => stroke)
 			.polygonLabel((feat) => {
-				const feature = feat as GeoFeature;
+				const feature = featureFromPolygon(feat);
+				if (!feature) return '';
 				const iso = isoOf(feature);
 				const value = valueMap[iso] ?? 0;
 				const color = scaleColor(value, maxValue, colors);
@@ -72,7 +79,13 @@ export class ChoroplethLayer {
 				const row = rowByIso[iso];
 
 				if (tooltipFn) {
-					return tooltipFn({ iso, name, value, color, row });
+					return tooltipFn({
+						iso,
+						name,
+						value,
+						color,
+						...definedProps({ row }),
+					});
 				}
 
 				return [

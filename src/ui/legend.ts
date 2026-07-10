@@ -97,8 +97,10 @@ export function renderLegend(options: LegendRenderOptions): TemplateResult {
 									placeholder=${config.search.placeholder}
 									.value=${query}
 									aria-busy=${searching ? 'true' : 'false'}
-									@input=${(e: Event) =>
-										onQueryInput((e.target as HTMLInputElement).value)}
+									@input=${(e: Event) => {
+										const target = e.target;
+										if (target instanceof HTMLInputElement) onQueryInput(target.value);
+									}}
 								/>
 							</label>
 						`

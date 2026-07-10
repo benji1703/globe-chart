@@ -39,8 +39,9 @@ function interpolateRgb(fromHex: string, toHex: string, t: number): string {
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
 	const match = /^#([0-9a-f]{6})$/i.exec(hex.trim());
-	if (!match) return null;
-	const n = parseInt(match[1], 16);
+	const hexBody = match?.[1];
+	if (!hexBody) return null;
+	const n = parseInt(hexBody, 16);
 	return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
 }
 

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { DataRow } from './types';
+import type { DataRow } from './types.js';
 
 class FakeResizeObserver {
 	observe() {
@@ -142,8 +142,8 @@ vi.mock('./load-countries', () => ({
 	],
 }));
 
-const { globeChartMockData } = await import('./globe-chart.mock-data');
-await import('./globe-chart');
+const { globeChartMockData } = await import('./globe-chart.mock-data.js');
+await import('./globe-chart.js');
 
 async function mountGlobe(
 	props: Partial<{ data: DataRow[]; showLegend: boolean; loading: boolean }> = {},

@@ -1,7 +1,7 @@
-import type { GeoFeature } from './types.js';
+import type { CountryProperties, GeoFeature, GeoGeometry } from './types.js';
 
 const INVALID_ISO = new Set(['', '-99', '-1']);
-const ADM0_A3_TO_ISO2: Record<string, string> = {
+const ADM0_A3_TO_ISO2: Readonly<Record<string, string>> = {
 	FRA: 'FR',
 	NOR: 'NO',
 };
@@ -14,7 +14,7 @@ export function pickIso(...candidates: unknown[]): string {
 }
 
 export function isoOf(feature: GeoFeature): string {
-	const p = feature.properties;
+	const p: CountryProperties = feature.properties;
 	const iso2 = pickIso(p.i, p.ISO_A2, p.WB_A2);
 	if (iso2) return iso2;
 
@@ -23,13 +23,21 @@ export function isoOf(feature: GeoFeature): string {
 }
 
 export function featureName(feature: GeoFeature, fallbackIso: string): string {
-	const p = feature.properties;
+	const p: CountryProperties = feature.properties;
 	return String(p.n ?? p.ADMIN ?? p.NAME ?? fallbackIso);
+}
+
+function isLonLatPair(coords: unknown): coords is [number, number] {
+	return (
+		Array.isArray(coords) &&
+		typeof coords[0] === 'number' &&
+		typeof coords[1] === 'number'
+	);
 }
 
 /** Prefer the largest polygon's bbox center (overseas territories / antimeridian). */
 export function boundingBoxCenter(
-	geometry: GeoFeature['geometry'],
+	geometry: GeoGeometry | undefined,
 ): { lat: number; lng: number } | null {
 	if (!geometry) return null;
 
@@ -48,8 +56,8 @@ export function boundingBoxCenter(
 		const points: [number, number][] = [];
 		const flatten = (coords: unknown) => {
 			if (!Array.isArray(coords)) return;
-			if (typeof coords[0] === 'number' && typeof coords[1] === 'number') {
-				points.push([coords[0] as number, coords[1] as number]);
+			if (isLonLatPair(coords)) {
+				points.push([coords[0], coords[1]]);
 				return;
 			}
 			for (const c of coords) flatten(c);
@@ -82,20 +90,21 @@ export function expandCountryFeatures(features: GeoFeature[]): GeoFeature[] {
 	const packed = sample != null && Math.abs(sample[0]) > 180;
 	if (!packed) return features;
 
-	return features.map((f) => ({
-		...f,
-		geometry: f.geometry
-			? {
-					type: f.geometry.type,
-					coordinates: decodeCoords(f.geometry.coordinates),
-				}
-			: f.geometry,
-	}));
+	return features.map((f) => {
+		if (!f.geometry) return { ...f };
+		return {
+			...f,
+			geometry: {
+				type: f.geometry.type,
+				coordinates: decodeCoords(f.geometry.coordinates),
+			},
+		};
+	});
 }
 
 function firstPoint(coords: unknown): [number, number] | null {
 	if (!Array.isArray(coords)) return null;
-	if (typeof coords[0] === 'number' && typeof coords[1] === 'number') {
+	if (isLonLatPair(coords)) {
 		return [coords[0], coords[1]];
 	}
 	for (const c of coords) {
@@ -107,7 +116,7 @@ function firstPoint(coords: unknown): [number, number] | null {
 
 function decodeCoords(coords: unknown): unknown {
 	if (!Array.isArray(coords)) return coords;
-	if (typeof coords[0] === 'number' && typeof coords[1] === 'number') {
+	if (isLonLatPair(coords)) {
 		return [coords[0] / 10, coords[1] / 10];
 	}
 	return coords.map(decodeCoords);

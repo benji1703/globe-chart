@@ -1,11 +1,35 @@
 import { feature } from 'topojson-client';
 import type { GeometryCollection, Topology } from 'topojson-specification';
 
-import type { GeoFeature } from './types.js';
+import type { CountryProperties, GeoFeature, GeoGeometry } from './types.js';
+import { isRecord } from './types.js';
 
 export type CountriesTopology = Topology<{
 	countries: GeometryCollection<{ i?: string; n?: string }>;
 }>;
+
+function isCountriesTopology(value: unknown): value is CountriesTopology {
+	return isRecord(value) && value['type'] === 'Topology' && isRecord(value['objects']);
+}
+
+function toCountryProperties(value: unknown): CountryProperties {
+	if (!isRecord(value)) return {};
+	const out: CountryProperties = {};
+	for (const [key, raw] of Object.entries(value)) {
+		if (raw == null || typeof raw === 'string' || typeof raw === 'number') {
+			out[key] = raw;
+		}
+	}
+	return out;
+}
+
+function toGeoGeometry(value: unknown): GeoGeometry | undefined {
+	if (!isRecord(value) || typeof value['type'] !== 'string') return undefined;
+	return {
+		type: value['type'],
+		coordinates: value['coordinates'],
+	};
+}
 
 /**
  * Expand a shipped countries Topology into GeoJSON features for globe.gl.
@@ -18,11 +42,19 @@ export function featuresFromTopology(topology: CountriesTopology): GeoFeature[] 
 	const collection = feature(topology, object);
 	if (collection.type !== 'FeatureCollection') return [];
 
-	return collection.features.map((f) => ({
-		type: 'Feature' as const,
-		properties: (f.properties ?? {}) as GeoFeature['properties'],
-		geometry: f.geometry as GeoFeature['geometry'],
-	}));
+	return collection.features.map((f): GeoFeature => {
+		const geometry = toGeoGeometry(f.geometry);
+		return geometry
+			? {
+					type: 'Feature',
+					properties: toCountryProperties(f.properties),
+					geometry,
+				}
+			: {
+					type: 'Feature',
+					properties: toCountryProperties(f.properties),
+				};
+	});
 }
 
 /**
@@ -46,8 +78,8 @@ export async function loadCountryFeatures(): Promise<GeoFeature[]> {
 	if (!res.ok) {
 		throw new Error(`Country map asset failed to load (${res.status})`);
 	}
-	const topology = (await res.json()) as CountriesTopology;
-	if (!topology || topology.type !== 'Topology') {
+	const topology: unknown = await res.json();
+	if (!isCountriesTopology(topology)) {
 		throw new Error('Country map asset is not TopoJSON');
 	}
 	return featuresFromTopology(topology);

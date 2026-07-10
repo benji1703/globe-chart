@@ -1,4 +1,6 @@
-export const globeChartMockData = [
+import type { DataRow } from './types.js';
+
+export const globeChartMockData: DataRow[] = [
 	{ iso: 'US', value: 1200 },
 	{ iso: 'GB', value: 450 },
 	{ iso: 'DE', value: 320 },

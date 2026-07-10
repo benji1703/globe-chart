@@ -1,12 +1,12 @@
 import type { Preview } from '@storybook/web-components-vite';
 import { html } from 'lit';
 
-import '../src/globe-chart';
+import '../src/globe-chart.js';
 
-const THEME_BG: Record<string, string> = {
+const THEME_BG = {
 	light: '#f4f8fc',
 	dark: '#060e18',
-};
+} as const satisfies Record<'light' | 'dark', string>;
 
 const preview: Preview = {
 	parameters: {
@@ -39,7 +39,7 @@ const preview: Preview = {
 				node.remove();
 			}
 
-			const theme = (context.globals.theme as string) === 'dark' ? 'dark' : 'light';
+			const theme = context.globals['theme'] === 'dark' ? 'dark' : 'light';
 			const bg = THEME_BG[theme];
 
 			document.body.style.background = bg;

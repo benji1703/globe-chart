@@ -1,4 +1,5 @@
 import type { ToastLevel, ToastMessage } from './types.js';
+import { definedProps } from './types.js';
 
 export interface ToastState {
 	items: ToastMessage[];
@@ -41,9 +42,9 @@ export function pushToast(state: ToastState, input: PushToastInput): ToastState 
 		level: input.level,
 		title: input.title,
 		body: input.body,
-		details: input.details,
 		createdAt: Date.now(),
 		persist: input.persist ?? input.level === 'error',
+		...definedProps({ details: input.details }),
 	};
 
 	const items = [...state.items, item].slice(-Math.max(1, input.maxVisible));

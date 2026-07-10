@@ -18,11 +18,27 @@ export { featuresFromTopology, loadCountryFeatures } from './load-countries.js';
 export type { CountriesTopology } from './load-countries.js';
 export type {
 	CountryEventDetail,
+	CountryProperties,
 	DataRow,
 	FeedbackEventDetail,
+	GeoFeature,
+	GeoGeometry,
+	GlobeChartEventMap,
 	LegendEntry,
+	LegendSearchEventDetail,
+	SkipReason,
 	ThemeColors,
+	ToastLevel,
 	ToastMessage,
+	ValueIndexResult,
+} from './types.js';
+export {
+	assertNever,
+	definedProps,
+	isDataRow,
+	isGeoFeature,
+	isRecord,
 } from './types.js';
 export { filterLegendEntries, mergeLegendByIso, paginateItems } from './legend-query.js';
 export { buildValueIndex, parseDataRows } from './value-index.js';
+export type { ParseDataRowsResult, ValueIndexOptions } from './value-index.js';
