@@ -1,21 +1,25 @@
 #!/usr/bin/env node
 /**
- * Rebuild the slim Natural Earth countries file shipped with the package.
+ * Rebuild the Natural Earth countries topology shipped with the package.
  *
  * Usage:
- *   node scripts/slim-countries.mjs [path/to/full.geojson]
+ *   node scripts/slim-countries.mjs [path/to/full-or-packed.geojson]
  *
- * Output uses short property keys (`i` = ISO2, `n` = name), resolves FRA/NOR
- * edge cases at build time, and stores coordinates as integers ×10 (1 decimal).
- * Runtime expands coords back to degrees in `expandCountryFeatures`.
+ * Output is TopoJSON (shared arcs + quantization). Runtime expands to GeoJSON
+ * features via topojson-client in `loadCountryFeatures`.
+ *
+ * Env:
+ *   QUANTIZE=10000   topology quantization (default 1e4; try 1e3 for smaller)
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { topology } from 'topojson-server';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const inputPath = resolve(root, process.argv[2] ?? 'src/data/ne_110m_admin_0_countries.json');
 const outputPath = resolve(root, 'src/data/ne_110m_admin_0_countries.json');
+const QUANTIZE = Number(process.env.QUANTIZE ?? 1e4);
 
 const INVALID = new Set(['', '-99', '-1', null, undefined]);
 const ADM0_A3_TO_ISO2 = { FRA: 'FR', NOR: 'NO' };
@@ -38,20 +42,6 @@ function resolveName(p) {
 	return String(p.ADMIN ?? p.NAME ?? p.n ?? '');
 }
 
-/** Encode degrees → int ×10 (one decimal of precision). */
-function encodeCoord(n) {
-	return Math.round(Number(n) * 10);
-}
-
-function encodeCoords(coords) {
-	if (typeof coords[0] === 'number') {
-		return [encodeCoord(coords[0]), encodeCoord(coords[1])];
-	}
-	return coords.map(encodeCoords);
-}
-
-const src = JSON.parse(readFileSync(inputPath, 'utf8'));
-
 function firstPoint(coords) {
 	if (!Array.isArray(coords)) return null;
 	if (typeof coords[0] === 'number' && typeof coords[1] === 'number') return coords;
@@ -62,26 +52,50 @@ function firstPoint(coords) {
 	return null;
 }
 
-const sample = firstPoint(src.features?.[0]?.geometry?.coordinates);
-if (sample && Math.abs(sample[0]) > 180) {
-	console.error('Input looks already packed (int×10 coords). Pass a full Natural Earth GeoJSON.');
-	process.exit(1);
+/** Packed GeoJSON used int×10 degrees; TopoJSON needs real lon/lat. */
+function decodeCoords(coords) {
+	if (!Array.isArray(coords)) return coords;
+	if (typeof coords[0] === 'number' && typeof coords[1] === 'number') {
+		return [coords[0] / 10, coords[1] / 10];
+	}
+	return coords.map(decodeCoords);
 }
 
-const features = (src.features ?? []).map((f) => {
-	const p = f.properties ?? {};
-	const i = resolveIso(p);
-	const n = resolveName(p) || i;
-	return {
-		type: 'Feature',
-		properties: { i, n },
-		geometry: {
-			type: f.geometry.type,
-			coordinates: encodeCoords(f.geometry.coordinates),
-		},
-	};
-});
+function asFeatureCollection(src) {
+	if (src?.type === 'Topology' && src.objects) {
+		console.error('Input is already TopoJSON. Pass GeoJSON (full Natural Earth or packed).');
+		process.exit(1);
+	}
 
-const out = JSON.stringify({ type: 'FeatureCollection', features });
+	const featuresIn = src.features ?? [];
+	const sample = firstPoint(featuresIn[0]?.geometry?.coordinates);
+	const packed = sample != null && Math.abs(sample[0]) > 180;
+
+	return {
+		type: 'FeatureCollection',
+		features: featuresIn.map((f) => {
+			const p = f.properties ?? {};
+			const i = resolveIso(p);
+			const n = resolveName(p) || i;
+			const coordinates = packed
+				? decodeCoords(f.geometry.coordinates)
+				: f.geometry.coordinates;
+			return {
+				type: 'Feature',
+				properties: { i, n },
+				geometry: { type: f.geometry.type, coordinates },
+			};
+		}),
+	};
+}
+
+const src = JSON.parse(readFileSync(inputPath, 'utf8'));
+const collection = asFeatureCollection(src);
+const topo = topology({ countries: collection }, QUANTIZE);
+const out = JSON.stringify(topo);
 writeFileSync(outputPath, out);
-console.log(`Wrote ${features.length} features → ${outputPath} (${out.length} bytes)`);
+
+const arcs = Array.isArray(topo.arcs) ? topo.arcs.length : 0;
+console.log(
+	`Wrote TopoJSON → ${outputPath} (${out.length} bytes, ${collection.features.length} countries, ${arcs} arcs, quantize=${QUANTIZE})`,
+);

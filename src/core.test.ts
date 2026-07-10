@@ -143,6 +143,21 @@ describe('iso', () => {
 	});
 });
 
+describe('featuresFromTopology', () => {
+	it('expands shipped TopoJSON into GeoJSON features', async () => {
+		const { featuresFromTopology } = await import('./load-countries');
+		const topology = await import('./data/ne_110m_admin_0_countries.json');
+		const topo = (topology as { default?: unknown }).default ?? topology;
+		const features = featuresFromTopology(topo as never);
+		expect(features.length).toBe(177);
+		const af = features.find((f) => f.properties.i === 'AF');
+		expect(af?.properties.n).toBe('Afghanistan');
+		const ring = af?.geometry?.coordinates as number[][][];
+		expect(ring[0][0][0]).toBeGreaterThan(60);
+		expect(ring[0][0][0]).toBeLessThan(70);
+	});
+});
+
 describe('toast reducer', () => {
 	it('pushes, caps visibility, and dismisses', () => {
 		let state = createToastState();

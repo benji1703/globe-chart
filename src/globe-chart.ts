@@ -9,7 +9,8 @@ import {
 	type GlobeChartConfigInput,
 	type LegendSearchHit,
 } from './config.js';
-import { boundingBoxCenter, expandCountryFeatures, featureName, isoOf } from './iso.js';
+import { boundingBoxCenter, featureName, isoOf } from './iso.js';
+import { loadCountryFeatures } from './load-countries.js';
 import { ChoroplethLayer } from './layer/choropleth-layer.js';
 import {
 	filterLegendEntries,
@@ -478,13 +479,13 @@ export class GlobeChart extends LitElement {
 		this.applyConfigMerge();
 
 		try {
-			const [, geoModule] = await Promise.all([
+			const [, countries] = await Promise.all([
 				this.scene.create({
 					element: el,
 					config: this.resolvedConfig,
 					motionMs: (ms, kind) => this.motionMs(ms, kind),
 				}),
-				import('./data/ne_110m_admin_0_countries.json'),
+				loadCountryFeatures(),
 			]);
 
 			// Aborted: this instance was torn down mid-init.
@@ -493,13 +494,7 @@ export class GlobeChart extends LitElement {
 				return;
 			}
 
-			const geoJson = geoModule as {
-				features?: GeoFeature[];
-				default?: { features: GeoFeature[] };
-			};
-			this.countryFeatures = expandCountryFeatures(
-				geoJson.features ?? geoJson.default?.features ?? [],
-			);
+			this.countryFeatures = countries;
 			if (!this.countryFeatures.length) {
 				this.notify({
 					level: 'error',

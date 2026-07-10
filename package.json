@@ -61,15 +61,19 @@
 	"dependencies": {
 		"globe.gl": "2.46.1",
 		"lit": "^3.3.3",
-		"three": "^0.185.1"
+		"three": "^0.185.1",
+		"topojson-client": "^3.1.0"
 	},
 	"devDependencies": {
 		"@storybook/web-components": "^10.4.6",
 		"@storybook/web-components-vite": "^10.4.6",
 		"@types/node": "^26.1.1",
 		"@types/three": "^0.185.1",
+		"@types/topojson-client": "^3.1.5",
+		"@types/topojson-specification": "^1.0.5",
 		"jsdom": "^29.1.1",
 		"storybook": "^10.4.6",
+		"topojson-server": "^3.0.1",
 		"typescript": "^7.0.2",
 		"vite": "^8.1.4",
 		"vitest": "^4.1.10"

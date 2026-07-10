@@ -13,8 +13,9 @@ npm run dev          # Storybook
 npm run dev:demo     # local demo site
 ```
 
-Country GeoJSON is packed under `src/data/`. To rebuild from a full Natural Earth
-file: `npm run slim-geo -- path/to/full.geojson`.
+Country GeoJSON / TopoJSON is packed under `src/data/`. To rebuild from a full
+Natural Earth GeoJSON file: `npm run slim-geo -- path/to/full.geojson`
+(optional `QUANTIZE=1000` for a smaller topology).
 
 ## Guidelines
 

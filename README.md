@@ -8,7 +8,7 @@ Pass ISO country codes and numeric values to render a choropleth with an optiona
 legend, themes, camera controls, and in-component toast feedback.
 
 Country outlines come from [Natural Earth](https://www.naturalearthdata.com/)
-110m admin-0 data (public domain). See `NOTICE`.
+110m admin-0 data (public domain), shipped as quantized TopoJSON. See `NOTICE`.
 
 ## License
 

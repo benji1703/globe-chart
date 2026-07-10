@@ -85,76 +85,60 @@ class FakeGlobe {
 
 vi.mock('globe.gl', () => ({ default: FakeGlobe }));
 
-vi.mock('./data/ne_110m_admin_0_countries.json', () => {
-	const data = {
-		features: [
-			{
-				properties: { ADMIN: 'United States of America', ISO_A2: 'US', ISO_A3: 'USA', NAME: 'United States' },
-				geometry: {
-					type: 'Polygon',
-					coordinates: [
+vi.mock('./load-countries', () => ({
+	loadCountryFeatures: async () => [
+		{
+			type: 'Feature',
+			properties: { i: 'US', n: 'United States' },
+			geometry: {
+				type: 'Polygon',
+				coordinates: [
+					[
+						[-100, 30],
+						[-90, 30],
+						[-90, 40],
+						[-100, 40],
+						[-100, 30],
+					],
+				],
+			},
+		},
+		{
+			type: 'Feature',
+			properties: { i: 'FR', n: 'France' },
+			geometry: {
+				type: 'MultiPolygon',
+				coordinates: [
+					[
 						[
-							[-100, 30],
-							[-90, 30],
-							[-90, 40],
-							[-100, 40],
-							[-100, 30],
+							[2, 46],
+							[3, 46],
+							[3, 47],
+							[2, 47],
+							[2, 46],
 						],
 					],
-				},
+				],
 			},
-			{
-				properties: {
-					ADMIN: 'France',
-					ISO_A2: '-99',
-					ISO_A3: '-99',
-					ADM0_A3: 'FRA',
-					WB_A2: 'FR',
-					NAME: 'France',
-				},
-				geometry: {
-					type: 'MultiPolygon',
-					coordinates: [
-						[
-							[
-								[0, 45],
-								[5, 45],
-								[5, 50],
-								[0, 50],
-								[0, 45],
-							],
-						],
-						[
-							[
-								[-54, 2],
-								[-50, 2],
-								[-50, 6],
-								[-54, 6],
-								[-54, 2],
-							],
-						],
+		},
+		{
+			type: 'Feature',
+			properties: { i: 'DE', n: 'Germany' },
+			geometry: {
+				type: 'Polygon',
+				coordinates: [
+					[
+						[6, 47],
+						[14, 47],
+						[14, 55],
+						[6, 55],
+						[6, 47],
 					],
-				},
+				],
 			},
-			{
-				properties: { ADMIN: 'Germany', ISO_A2: 'DE', ISO_A3: 'DEU', NAME: 'Germany' },
-				geometry: {
-					type: 'Polygon',
-					coordinates: [
-						[
-							[6, 47],
-							[14, 47],
-							[14, 55],
-							[6, 55],
-							[6, 47],
-						],
-					],
-				},
-			},
-		],
-	};
-	return { ...data, default: data };
-});
+		},
+	],
+}));
 
 const { globeChartMockData } = await import('./globe-chart.mock-data');
 await import('./globe-chart');
@@ -207,7 +191,7 @@ describe('globe-chart', () => {
 		});
 
 		const names = [...(el.shadowRoot?.querySelectorAll('.legend-name') ?? [])].map((n) => n.textContent);
-		expect(names).toContain('United States of America');
+		expect(names).toContain('United States');
 		expect(names).toContain('France');
 		expect(names).toContain('Germany');
 		el.remove();
