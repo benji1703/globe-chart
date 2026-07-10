@@ -10,6 +10,13 @@ legend, themes, camera controls, and in-component toast feedback.
 Country outlines come from [Natural Earth](https://www.naturalearthdata.com/)
 110m admin-0 data (public domain), shipped as quantized TopoJSON. See `NOTICE`.
 
+## Demo
+
+Try the interactive demo:
+[https://benji1703.github.io/globe-chart/](https://benji1703.github.io/globe-chart/)
+
+[![globe-chart dark theme demo with country choropleth and hover tooltip](https://raw.githubusercontent.com/benji1703/globe-chart/main/docs/images/demo-dark.png)](https://benji1703.github.io/globe-chart/)
+
 ## License
 
 **Dual model**
