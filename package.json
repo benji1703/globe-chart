@@ -43,7 +43,9 @@
 		"provenance": true
 	},
 	"sideEffects": [
-		"./dist/globe-chart.js"
+		"./dist/globe-chart.js",
+		"./src/globe-chart.ts",
+		"./src/globe-chart.js"
 	],
 	"scripts": {
 		"dev": "storybook dev -p 6006",

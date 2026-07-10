@@ -7,12 +7,6 @@ export default defineConfig({
 	build: {
 		outDir: 'dist',
 		emptyOutDir: true,
-		rollupOptions: {
-			// Custom element registration must not be tree-shaken.
-			treeshake: {
-				moduleSideEffects: true,
-			},
-		},
 	},
 	server: {
 		port: 5173,
