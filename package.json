@@ -1,0 +1,75 @@
+{
+	"name": "globe-chart",
+	"version": "0.1.2",
+	"description": "Framework-agnostic <globe-chart> web component for country polygon choropleths on a 3D globe.",
+	"license": "MIT",
+	"type": "module",
+	"author": "Benjamin Arbibe <benjiar@gmail.com>",
+	"homepage": "https://benji1703.github.io/globe-chart/",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/benji1703/globe-chart.git"
+	},
+	"bugs": {
+		"url": "https://github.com/benji1703/globe-chart/issues"
+	},
+	"keywords": [
+		"globe",
+		"chart",
+		"web-component",
+		"lit",
+		"choropleth",
+		"globe.gl",
+		"countries"
+	],
+	"main": "./dist/globe-chart.js",
+	"module": "./dist/globe-chart.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/globe-chart.js"
+		}
+	},
+	"files": [
+		"dist",
+		"LICENSE",
+		"COMMERCIAL.md",
+		"NOTICE",
+		"README.md"
+	],
+	"publishConfig": {
+		"access": "public",
+		"provenance": true
+	},
+	"sideEffects": [
+		"./dist/globe-chart.js"
+	],
+	"scripts": {
+		"dev": "storybook dev -p 6006",
+		"dev:demo": "vite --config demo/vite.config.ts",
+		"build": "vite build && tsc -p tsconfig.json --emitDeclarationOnly",
+		"build:demo": "vite build --config demo/vite.config.ts",
+		"build:storybook": "storybook build",
+		"test": "vitest run",
+		"typecheck": "tsc -p tsconfig.json --noEmit",
+		"slim-geo": "node scripts/slim-countries.mjs",
+		"prepublishOnly": "npm test && npm run typecheck && npm run build"
+	},
+	"dependencies": {
+		"globe.gl": "2.46.1",
+		"lit": "^3.3.3",
+		"three": "^0.185.1"
+	},
+	"devDependencies": {
+		"@storybook/web-components": "^10.4.6",
+		"@storybook/web-components-vite": "^10.4.6",
+		"@types/node": "^26.1.1",
+		"@types/three": "^0.185.1",
+		"jsdom": "^29.1.1",
+		"storybook": "^10.4.6",
+		"typescript": "^7.0.2",
+		"vite": "^8.1.4",
+		"vitest": "^4.1.10"
+	}
+}

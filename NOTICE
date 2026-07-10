@@ -1,0 +1,10 @@
+# Notices
+
+## Natural Earth
+
+Country polygon data bundled with this package is derived from
+[Natural Earth](https://www.naturalearthdata.com/) 110m admin-0 countries
+(public domain).
+
+Natural Earth makes no warranties about the data. See
+https://www.naturalearthdata.com/about/terms-of-use/

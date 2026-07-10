@@ -1,0 +1,58 @@
+name: Publish npm
+
+# Publishes to npm via OIDC Trusted Publishing when a GitHub Release is published
+# (or via workflow_dispatch). Requires a Trusted Publisher configured on npmjs.com
+# for this repository and workflow filename.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Run npm publish --dry-run (no upload)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: https://registry.npmjs.org
+
+      - name: Upgrade npm
+        run: |
+          npm install -g npm@11.6.2
+          npm --version
+
+      - run: npm ci
+      - run: npm test
+      - run: npm run typecheck
+      - run: npm run build
+
+      # Clear setup-node's placeholder auth so OIDC Trusted Publishing can run.
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ''
+        run: |
+          unset NODE_AUTH_TOKEN
+          if [ -f "$NPM_CONFIG_USERCONFIG" ]; then
+            sed -i '/_authToken/d' "$NPM_CONFIG_USERCONFIG" || true
+          fi
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            npm publish --access public --dry-run --provenance
+          else
+            npm publish --access public --provenance
+          fi
