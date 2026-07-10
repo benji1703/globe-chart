@@ -3,7 +3,7 @@ import { MeshBasicMaterial } from 'three';
 const landCapMaterials = new Map<string, MeshBasicMaterial>();
 const solidColorImages = new Map<string, string>();
 
-/** Cap at altitude 0; polygonOffset vs ocean; depthWrite false so strokes stay visible. */
+/** Cap slightly above ocean; polygonOffset + depthWrite false keep strokes visible. */
 export function landCapMaterial(color: string): MeshBasicMaterial {
 	const key = color.toLowerCase();
 	let material = landCapMaterials.get(key);

@@ -21,6 +21,10 @@ export default defineConfig({
 		outDir: 'dist',
 		emptyOutDir: true,
 		modulePreload: { polyfill: true },
+		assetsInlineLimit: (filePath: string) => {
+			if (filePath.includes('ne_110m_admin_0_countries')) return false;
+			return undefined;
+		},
 	},
 	plugins: [
 		{

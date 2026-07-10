@@ -49,7 +49,9 @@ export class GlobeScene {
 			throw new DOMException('GlobeScene create aborted', 'AbortError');
 		}
 
-		// antialias off + no intro spin: biggest cold-start / per-frame wins in globe.gl.
+		// antialias off + no intro spin: cold-start / fill-rate wins.
+		// Do not use precision:'lowp' — caps sit on the globe and lowp depth
+		// fighting punches transparent holes through large countries.
 		this.globe = new Globe(element, {
 			animateIn: false,
 			waitForGlobeReady: true,
@@ -57,7 +59,6 @@ export class GlobeScene {
 				antialias: false,
 				alpha: true,
 				powerPreference: 'low-power',
-				precision: 'lowp',
 			},
 		})
 			.width(element.clientWidth)

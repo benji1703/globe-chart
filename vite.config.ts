@@ -11,8 +11,8 @@ export default defineConfig({
 		},
 		assetsInlineLimit: (filePath: string) => {
 			// Never data-URL the country topology — keep a real fetchable asset.
-			if (filePath.includes('ne_110m_admin_0_countries')) return 0;
-			return 4096;
+			if (filePath.includes('ne_110m_admin_0_countries')) return false;
+			return undefined;
 		},
 		rollupOptions: {
 			// Keep lit subpaths + topojson-client external so they are not inlined.

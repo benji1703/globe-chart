@@ -52,17 +52,18 @@ export function featuresFromTopology(topology: CountriesTopology): GeoFeature[] 
 }
 
 /**
- * Resolve the packaged TopoJSON URL without a static Vite asset import (lib mode
- * would otherwise inline it as a giant data: URL). The file is copied next to
- * the bundle at build time (`npm run build` / demo plugin).
+ * Resolve the packaged TopoJSON URL.
+ * Path is built dynamically so Vite does not rewrite it into an inlined data: URL
+ * (which blew the npm bundle past 170KB). The JSON is copied beside the built
+ * module (`npm run build` / demo `closeBundle` plugin).
  */
 function countriesJsonUrl(): string {
 	const file = ['ne_110m_admin_0_countries', 'json'].join('.');
-	// Dev server: absolute path under /src/data (avoids Vite emitting a second hashed copy).
+	// Dev: resolve next to this source module (…/src/data/…).
+	// Prod: JSON sits beside the emitted JS (dist/ or demo/dist/assets/).
 	if (import.meta.env?.DEV) {
-		return `/src/data/${file}`;
+		return new URL(`./data/${file}`, import.meta.url).href;
 	}
-	// Production: JSON is copied beside this module (dist/ or demo/dist/assets/).
 	return new URL(file, import.meta.url).href;
 }
 

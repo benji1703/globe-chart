@@ -106,7 +106,7 @@ export interface GlobeVisualConfig {
 	strokeColor: string;
 	/**
 	 * Cap tessellation step in angular degrees (three-globe). Higher = fewer
-	 * triangles / faster mesh build. Default 8 (library default is 5).
+	 * triangles. Too high leaves holes in large countries; default 1.
 	 */
 	curvatureDeg: number;
 	polygonAltitude: number;
@@ -195,9 +195,9 @@ export const DEFAULT_CONFIG = {
 	globe: {
 		atmosphereAltitude: 0.12,
 		strokeColor: 'rgba(30, 55, 85, 0.4)',
-		// Angular degrees for cap tessellation — higher = fewer triangles (three-globe default 5).
-		curvatureDeg: 8,
-		polygonAltitude: 0,
+		curvatureDeg: 1,
+		// Slight lift above the ocean sphere so caps never punch through (esp. large countries).
+		polygonAltitude: 0.004,
 		loadingRotateSpeed: 1.5,
 		autoRotateDirection: -1,
 		allowContextMenu: true,
