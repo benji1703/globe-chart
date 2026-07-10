@@ -154,6 +154,10 @@ and matching `error` / `warning` DOM events. Disable UI with
 
 Live demo: https://benji1703.github.io/globe-chart/
 
+Theme preference (Pages site): `localStorage['globe-chart-demo-theme']` if set to
+`light` or `dark`; otherwise `prefers-color-scheme`. A blocking script in
+`demo/index.html` applies this before first paint so the page does not flash.
+
 ## Attribution
 
 Natural Earth public-domain country boundaries — see `NOTICE`.

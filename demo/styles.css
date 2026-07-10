@@ -14,6 +14,35 @@
 	color-scheme: light;
 }
 
+/* Fallback if the head script did not run — match OS preference. */
+@media (prefers-color-scheme: dark) {
+	html:not([data-theme]) {
+		--bg0: #060e18;
+		--bg1: #0c1a2c;
+		--ink: #e8f0f8;
+		--muted: #8aa0b5;
+		--accent: #ff4d4d;
+		--accent-soft: #f5d04a;
+		--panel: rgba(8, 16, 28, 0.92);
+		--line: rgba(232, 240, 248, 0.1);
+		--shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+		color-scheme: dark;
+	}
+}
+
+html[data-theme='light'] {
+	--bg0: #f4f8fc;
+	--bg1: #dceaf6;
+	--ink: #121826;
+	--muted: #5c6b7a;
+	--accent: #c41e1e;
+	--accent-soft: #f5c518;
+	--panel: rgba(255, 255, 255, 0.9);
+	--line: rgba(18, 24, 38, 0.1);
+	--shadow: 0 24px 60px rgba(18, 40, 70, 0.1);
+	color-scheme: light;
+}
+
 html[data-theme='dark'] {
 	--bg0: #060e18;
 	--bg1: #0c1a2c;

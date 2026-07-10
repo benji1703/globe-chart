@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-theme="light">
+<html lang="en">
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -8,6 +8,49 @@
 			name="description"
 			content="Framework-agnostic Lit web component for country polygon choropleths on a 3D globe. Legend, themes, toasts, and a configurable API."
 		/>
+		<meta name="theme-color" content="#f4f8fc" />
+		<script>
+			/*! Theme before first paint.
+			 * 1) localStorage['globe-chart-demo-theme'] if light|dark
+			 * 2) else prefers-color-scheme
+			 * 3) else light
+			 */
+			(function () {
+				var KEY = 'globe-chart-demo-theme';
+				var saved = null;
+				try {
+					saved = localStorage.getItem(KEY);
+				} catch (e) {}
+				var theme =
+					saved === 'light' || saved === 'dark'
+						? saved
+						: window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+							? 'dark'
+							: 'light';
+				document.documentElement.dataset.theme = theme;
+				var meta = document.querySelector('meta[name="theme-color"]');
+				if (meta) meta.setAttribute('content', theme === 'dark' ? '#060e18' : '#f4f8fc');
+				document.documentElement.style.colorScheme = theme;
+				window.__globeChartDemoTheme = theme;
+				function syncUi() {
+					var buttons = document.querySelectorAll('[data-theme-set]');
+					for (var i = 0; i < buttons.length; i++) {
+						var btn = buttons[i];
+						btn.setAttribute(
+							'aria-pressed',
+							btn.getAttribute('data-theme-set') === theme ? 'true' : 'false',
+						);
+					}
+					var globe = document.getElementById('globe');
+					if (globe) globe.setAttribute('theme', theme);
+				}
+				if (document.readyState === 'loading') {
+					document.addEventListener('DOMContentLoaded', syncUi);
+				} else {
+					syncUi();
+				}
+			})();
+		</script>
 		<link rel="preconnect" href="https://fonts.googleapis.com" />
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 		<link
@@ -29,7 +72,7 @@
 					<a href="https://www.npmjs.com/package/globe-chart" rel="noopener">npm</a>
 				</nav>
 				<div class="theme-switch" role="group" aria-label="Color theme">
-					<button type="button" class="theme-switch__btn" data-theme-set="light" aria-pressed="true">
+					<button type="button" class="theme-switch__btn" data-theme-set="light" aria-pressed="false">
 						Light
 					</button>
 					<button type="button" class="theme-switch__btn" data-theme-set="dark" aria-pressed="false">
@@ -54,7 +97,7 @@
 
 			<section class="stage" id="demo">
 				<div class="stage-frame">
-					<globe-chart id="globe" legend legend-position="left" theme="light"></globe-chart>
+					<globe-chart id="globe" legend legend-position="left"></globe-chart>
 				</div>
 				<aside class="controls">
 					<label>

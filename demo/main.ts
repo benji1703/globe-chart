@@ -2,6 +2,13 @@ import type { GlobeChart } from '../src/globe-chart.ts';
 import type { LegendCollapseMode, LegendCollapseOnSelect } from '../src/config.ts';
 import { globeChartMockData } from '../src/globe-chart.mock-data.ts';
 
+declare global {
+	interface Window {
+		/** Set by the blocking theme script in demo/index.html before first paint. */
+		__globeChartDemoTheme?: 'light' | 'dark';
+	}
+}
+
 // Warm the heavy WebGL chunk while the hero is on screen.
 void import('globe.gl');
 
@@ -43,7 +50,11 @@ async function bootDemo() {
 
 	function applyTheme(theme: 'light' | 'dark') {
 		document.documentElement.dataset.theme = theme;
+		document.documentElement.style.colorScheme = theme;
 		localStorage.setItem('globe-chart-demo-theme', theme);
+		window.__globeChartDemoTheme = theme;
+		const meta = document.querySelector('meta[name="theme-color"]');
+		if (meta) meta.setAttribute('content', theme === 'dark' ? '#060e18' : '#f4f8fc');
 		globe.theme = theme;
 		for (const btn of themeButtons) {
 			const active = btn.dataset.themeSet === theme;
@@ -112,7 +123,10 @@ async function bootDemo() {
 	}
 
 	const saved =
-		(localStorage.getItem('globe-chart-demo-theme') as 'light' | 'dark' | null) ?? 'light';
+		(window.__globeChartDemoTheme as 'light' | 'dark' | undefined) ??
+		(document.documentElement.dataset.theme as 'light' | 'dark' | undefined) ??
+		(localStorage.getItem('globe-chart-demo-theme') as 'light' | 'dark' | null) ??
+		(window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
 	applyTheme(saved);
 
 	globe.showLegend = showLegend.checked;
