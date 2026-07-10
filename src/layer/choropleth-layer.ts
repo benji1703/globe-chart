@@ -35,7 +35,6 @@ export class ChoroplethLayer {
 				.polygonAltitude(config.globe.polygonAltitude)
 				.polygonCapCurvatureResolution(config.globe.curvatureDeg)
 				.polygonCapMaterial(() => landCapMaterial(colors.empty))
-				.polygonCapColor(() => colors.empty)
 				.polygonSideColor(() => 'rgba(0,0,0,0)')
 				.polygonStrokeColor(() => stroke)
 				.polygonLabel(() => '');
@@ -47,6 +46,8 @@ export class ChoroplethLayer {
 		const emptyLabel = config.legend.emptyLabel;
 		const format = config.legend.formatValue ?? ((v: number) => formatValue(v, emptyLabel));
 
+		// Prefer CapMaterial (polygonOffset / depthWrite). CapColor alone is enough for
+		// picking/labels; avoid a second per-feature color pass when materials are set.
 		globe
 			.polygonsData(features)
 			.globeImageUrl(solidColorImage(colors.ocean))
@@ -59,10 +60,6 @@ export class ChoroplethLayer {
 				const iso = isoOf(feat as GeoFeature);
 				const value = valueMap[iso] ?? 0;
 				return landCapMaterial(scaleColor(value, maxValue, colors));
-			})
-			.polygonCapColor((feat) => {
-				const iso = isoOf(feat as GeoFeature);
-				return scaleColor(valueMap[iso] ?? 0, maxValue, colors);
 			})
 			.polygonSideColor(() => 'rgba(0,0,0,0)')
 			.polygonStrokeColor(() => stroke)

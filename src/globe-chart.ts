@@ -37,6 +37,7 @@ import { renderLegend } from './ui/legend.js';
 import { globeChartStyles } from './ui/styles.js';
 import { renderToasts } from './ui/toasts.js';
 import { buildValueIndex } from './value-index.js';
+import { yieldToMain } from './yield-main.js';
 
 @customElement('globe-chart')
 export class GlobeChart extends LitElement {
@@ -103,6 +104,9 @@ export class GlobeChart extends LitElement {
 	private createGeneration = 0;
 	private hasCentered = false;
 	private loadingViewReady = false;
+	/** First choropleth paint uses 0ms transitions to avoid a multi-hundred-ms long task. */
+	private hasPaintedPolygons = false;
+	private polygonClickBound = false;
 	private revealTimer?: ReturnType<typeof setTimeout>;
 	private warningTimers = new Map<string, ReturnType<typeof setTimeout>>();
 	private readyDispatched = false;
@@ -479,6 +483,10 @@ export class GlobeChart extends LitElement {
 		this.applyConfigMerge();
 
 		try {
+			// Let the host page paint chrome before pulling in globe.gl / TopoJSON.
+			await yieldToMain();
+			if (generation !== this.createGeneration || !this.isConnected) return;
+
 			const [, countries] = await Promise.all([
 				this.scene.create({
 					element: el,
@@ -502,6 +510,13 @@ export class GlobeChart extends LitElement {
 					body: 'Country polygons failed to load. Check the package assets and try again.',
 					code: 'geojson-empty',
 				});
+			}
+
+			// Split WebGL construct vs polygon mesh build across frames.
+			await yieldToMain();
+			if (generation !== this.createGeneration || !this.isConnected) {
+				this.scene.destroy();
+				return;
 			}
 
 			this.applyVisual(false);
@@ -544,7 +559,10 @@ export class GlobeChart extends LitElement {
 		const index = this.computeIndex();
 		const colors = this.resolveThemeColors();
 		const isLoading = this.loading;
-		const duration = this.motionMs(this.resolvedConfig.camera.durations.polygon);
+		// Instant first mesh build — animated polygon morphs on cold start are a long task.
+		const duration = this.hasPaintedPolygons
+			? this.motionMs(this.resolvedConfig.camera.durations.polygon)
+			: 0;
 
 		this.reportDataFeedback(index, isLoading);
 
@@ -558,31 +576,12 @@ export class GlobeChart extends LitElement {
 			transitionMs: duration,
 			nameField: this.nameField,
 		});
+		this.hasPaintedPolygons = true;
 
-		globe.onPolygonClick((poly) => {
-			if (this.loading) return;
-			const feature = poly as GeoFeature;
-			const iso = isoOf(feature);
-			if (!iso) return;
-			const fromLegend = this.legendEntries.find((e) => e.iso === iso);
-			if (fromLegend) {
-				this.jumpTo(fromLegend);
-				return;
-			}
-			const center = boundingBoxCenter(feature.geometry);
-			if (!center) return;
-			const value = index.valueMap[iso] ?? 0;
-			const entry: LegendEntry = {
-				iso,
-				name: featureName(feature, iso),
-				value,
-				color: scaleColor(value, index.maxValue, colors),
-				lat: center.lat,
-				lng: center.lng,
-				row: index.rowByIso[iso],
-			};
-			this.jumpTo(entry);
-		});
+		if (!this.polygonClickBound) {
+			this.polygonClickBound = true;
+			globe.onPolygonClick((poly) => this.handlePolygonClick(poly));
+		}
 
 		this.scene.syncRotation({
 			loading: isLoading,
@@ -623,9 +622,37 @@ export class GlobeChart extends LitElement {
 			if (loadingChanged && this.animated && this.animateNavigation) {
 				this.revealTimer = setTimeout(startFly, 50);
 			} else {
+				// First reveal: point camera without waiting on a nested timeout.
 				startFly();
 			}
 		}
+	}
+
+	private handlePolygonClick(poly: object) {
+		if (this.loading) return;
+		const feature = poly as GeoFeature;
+		const iso = isoOf(feature);
+		if (!iso) return;
+		const index = this.computeIndex();
+		const colors = this.resolveThemeColors();
+		const fromLegend = this.legendEntries.find((e) => e.iso === iso);
+		if (fromLegend) {
+			this.jumpTo(fromLegend);
+			return;
+		}
+		const center = boundingBoxCenter(feature.geometry);
+		if (!center) return;
+		const value = index.valueMap[iso] ?? 0;
+		const entry: LegendEntry = {
+			iso,
+			name: featureName(feature, iso),
+			value,
+			color: scaleColor(value, index.maxValue, colors),
+			lat: center.lat,
+			lng: center.lng,
+			row: index.rowByIso[iso],
+		};
+		this.jumpTo(entry);
 	}
 
 	private reportDataFeedback(
@@ -796,6 +823,10 @@ export class GlobeChart extends LitElement {
 		this.legendBreakpointMq = undefined;
 		this.createGeneration += 1;
 		this.globeCreating = false;
+		this.hasPaintedPolygons = false;
+		this.polygonClickBound = false;
+		this.hasCentered = false;
+		this.readyDispatched = false;
 		clearTimeout(this.revealTimer);
 		clearTimeout(this.searchDebounceTimer);
 		this.searchAbort?.abort();

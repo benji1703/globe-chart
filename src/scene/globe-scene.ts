@@ -34,6 +34,17 @@ export class GlobeScene {
 			.height(element.clientHeight)
 			.polygonsTransitionDuration(motionMs(config.camera.durations.polygon));
 
+		// Cap DPR — full retina + 177 country meshes is a common long-task source.
+		try {
+			const renderer = (
+				this.globe as GlobeInstance & { renderer?: () => WebGLRenderer }
+			).renderer?.();
+			const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+			renderer?.setPixelRatio?.(Math.min(dpr, 1.5));
+		} catch {
+			/* renderer may not be ready yet */
+		}
+
 		this.resizeObserver = new ResizeObserver(() => {
 			if (!this.globe || !this.element) return;
 			this.globe.width(this.element.clientWidth).height(this.element.clientHeight);
