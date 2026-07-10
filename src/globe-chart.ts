@@ -167,19 +167,23 @@ export class GlobeChart extends LitElement {
 	}
 
 	private observeVisibility() {
-		if (this.visibleEnough || typeof IntersectionObserver !== 'function') {
+		if (typeof IntersectionObserver !== 'function') {
 			this.visibleEnough = true;
 			return;
 		}
+		this.visibilityObserver?.disconnect();
 		this.visibilityObserver = new IntersectionObserver(
 			(entries) => {
-				if (!entries.some((e) => e.isIntersecting)) return;
-				this.visibilityObserver?.disconnect();
-				this.visibilityObserver = undefined;
-				this.visibleEnough = true;
-				if (!this.scene.globe && !this.globeCreating) void this.createGlobe();
+				const visible = entries.some((e) => e.isIntersecting);
+				this.visibleEnough = visible || this.visibleEnough;
+				if (visible) {
+					if (!this.scene.globe && !this.globeCreating) void this.createGlobe();
+					else if (this.resolvedConfig.globe.pauseWhenHidden) this.scene.kick();
+				} else if (this.scene.globe && this.resolvedConfig.globe.pauseWhenHidden) {
+					this.scene.setPaused(true);
+				}
 			},
-			{ rootMargin: '120px' },
+			{ rootMargin: '120px', threshold: 0 },
 		);
 		this.visibilityObserver.observe(this);
 	}
@@ -655,6 +659,11 @@ export class GlobeChart extends LitElement {
 			nameField: this.nameField,
 		});
 		this.hasPaintedPolygons = true;
+		try {
+			globe.enablePointerInteraction(true);
+		} catch {
+			/* older globe.gl */
+		}
 
 		if (!this.polygonClickBound) {
 			this.polygonClickBound = true;
@@ -667,6 +676,8 @@ export class GlobeChart extends LitElement {
 			autoRotateSpeed: this.autoRotateSpeed,
 			config: this.resolvedConfig,
 		});
+		// Wake long enough for the mesh/transition to land, then idle-pause (unless spinning).
+		this.scene.kick(Math.max(duration, 120) + 80);
 
 		if (isLoading) {
 			clearTimeout(this.revealTimer);

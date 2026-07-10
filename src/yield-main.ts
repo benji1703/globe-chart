@@ -16,14 +16,21 @@ function getScheduler(): SchedulerWithYield | undefined {
 	return undefined;
 }
 
-/** Yield so the browser can paint / handle input between heavy globe tasks. */
+/**
+ * Yield so the browser can paint / handle input between heavy globe tasks.
+ *
+ * Prefer `scheduler.yield()` when available. Avoid `setTimeout(0)`: Chrome
+ * attributes the async continuation (and any heavy work right after `await`)
+ * to that timer, which surfaces as `[Violation] 'setTimeout' handler took Nms`
+ * even when the timer itself only resolved a promise.
+ */
 export function yieldToMain(): Promise<void> {
 	const scheduler = getScheduler();
 	if (scheduler) return scheduler.yield();
 
 	return new Promise((resolve) => {
 		requestAnimationFrame(() => {
-			setTimeout(resolve, 0);
+			requestAnimationFrame(() => resolve());
 		});
 	});
 }

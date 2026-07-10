@@ -104,10 +104,24 @@ export interface CameraConfig {
 export interface GlobeVisualConfig {
 	atmosphereAltitude: number;
 	strokeColor: string;
+	/**
+	 * Cap tessellation step in angular degrees (three-globe). Higher = fewer
+	 * triangles / faster mesh build. Default 8 (library default is 5).
+	 */
 	curvatureDeg: number;
 	polygonAltitude: number;
 	loadingRotateSpeed: number;
 	autoRotateDirection: number;
+	/**
+	 * Allow the browser context menu on the WebGL canvas.
+	 * OrbitControls normally blocks it (right-click is pan). When true, the
+	 * contextmenu listener is removed after init.
+	 */
+	allowContextMenu: boolean;
+	/** Cap `devicePixelRatio` (lower = less GPU fill-rate). Default 1. */
+	maxPixelRatio: number;
+	/** Pause the render loop while the element is off-screen. Default true. */
+	pauseWhenHidden: boolean;
 }
 
 export interface ToastsConfig {
@@ -181,10 +195,14 @@ export const DEFAULT_CONFIG = {
 	globe: {
 		atmosphereAltitude: 0.12,
 		strokeColor: 'rgba(30, 55, 85, 0.4)',
-		curvatureDeg: 1,
+		// Angular degrees for cap tessellation — higher = fewer triangles (three-globe default 5).
+		curvatureDeg: 8,
 		polygonAltitude: 0,
 		loadingRotateSpeed: 1.5,
 		autoRotateDirection: -1,
+		allowContextMenu: true,
+		maxPixelRatio: 1,
+		pauseWhenHidden: true,
 	},
 	toasts: {
 		enabled: true,
@@ -405,8 +423,15 @@ function assignGlobe(
 		'polygonAltitude',
 		'loadingRotateSpeed',
 		'autoRotateDirection',
+		'maxPixelRatio',
 	] as const) {
 		if (next[key] !== undefined && typeof next[key] !== 'number') {
+			invalidPaths.push(`globe.${key}`);
+			delete next[key];
+		}
+	}
+	for (const key of ['allowContextMenu', 'pauseWhenHidden'] as const) {
+		if (next[key] !== undefined && typeof next[key] !== 'boolean') {
 			invalidPaths.push(`globe.${key}`);
 			delete next[key];
 		}

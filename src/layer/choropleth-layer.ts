@@ -32,7 +32,7 @@ export class ChoroplethLayer {
 
 		if (loading) {
 			globe
-				.polygonsData([...features])
+				.polygonsData(features as GeoFeature[])
 				.globeImageUrl(solidColorImage(colors.ocean))
 				.backgroundColor('rgba(0,0,0,0)')
 				.atmosphereColor(colors.ocean)
@@ -54,7 +54,7 @@ export class ChoroplethLayer {
 		// Prefer CapMaterial (polygonOffset / depthWrite). CapColor alone is enough for
 		// picking/labels; avoid a second per-feature color pass when materials are set.
 		globe
-			.polygonsData([...features])
+			.polygonsData(features as GeoFeature[])
 			.globeImageUrl(solidColorImage(colors.ocean))
 			.backgroundColor('rgba(0,0,0,0)')
 			.atmosphereColor(colors.ocean)

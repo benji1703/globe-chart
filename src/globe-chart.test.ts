@@ -21,9 +21,21 @@ class FakeGlobe {
 		autoRotate: false,
 		autoRotateSpeed: 0,
 		enableDamping: false,
+		enablePan: false,
 		dampingFactor: 0.05,
+		domElement: { removeEventListener() { /* no-op */ } },
+		_onContextMenu: () => {
+			/* no-op */
+		},
+		addEventListener() {
+			/* no-op */
+		},
+		removeEventListener() {
+			/* no-op */
+		},
 	};
 	lastPointOfView: unknown;
+	paused = false;
 
 	width() {
 		return this;
@@ -73,8 +85,35 @@ class FakeGlobe {
 	onPolygonClick() {
 		return this;
 	}
+	enablePointerInteraction() {
+		return this;
+	}
 	controls() {
 		return this.controlsState;
+	}
+	renderer() {
+		return {
+			setPixelRatio() {
+				/* no-op */
+			},
+			getContext() {
+				return {};
+			},
+			forceContextLoss() {
+				/* no-op */
+			},
+			dispose() {
+				/* no-op */
+			},
+		};
+	}
+	pauseAnimation() {
+		this.paused = true;
+		return this;
+	}
+	resumeAnimation() {
+		this.paused = false;
+		return this;
 	}
 	pointOfView(view?: unknown) {
 		this.lastPointOfView = view;

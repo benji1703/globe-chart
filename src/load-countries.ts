@@ -44,16 +44,10 @@ export function featuresFromTopology(topology: CountriesTopology): GeoFeature[] 
 
 	return collection.features.map((f): GeoFeature => {
 		const geometry = toGeoGeometry(f.geometry);
+		const properties = toCountryProperties(f.properties);
 		return geometry
-			? {
-					type: 'Feature',
-					properties: toCountryProperties(f.properties),
-					geometry,
-				}
-			: {
-					type: 'Feature',
-					properties: toCountryProperties(f.properties),
-				};
+			? { type: 'Feature', properties, geometry }
+			: { type: 'Feature', properties };
 	});
 }
 

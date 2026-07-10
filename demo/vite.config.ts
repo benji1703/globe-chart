@@ -10,6 +10,13 @@ const repoRoot = resolve(root, '..');
 export default defineConfig({
 	root,
 	base: './',
+	resolve: {
+		// Prevent Vite from shipping two Lit copies (lit vs lit-html / reactive-element).
+		dedupe: ['lit', 'lit-html', 'lit-element', '@lit/reactive-element'],
+	},
+	optimizeDeps: {
+		include: ['lit', 'lit/decorators.js'],
+	},
 	build: {
 		outDir: 'dist',
 		emptyOutDir: true,
