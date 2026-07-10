@@ -3,12 +3,24 @@ import { globeChartMockData } from '../src/globe-chart.mock-data.js';
 import type { DataRow } from '../src/types.js';
 import { datasetGet, datasetSet, isDemoTheme, isLegendSide, isOneOf } from '../src/util.js';
 import type { GlobeChart } from '../src/globe-chart.js';
+import { version as pkgVersion } from '../package.json';
 
 declare global {
 	interface Window {
 		/** Set by the blocking theme script in demo/index.html before first paint. */
 		__globeChartDemoTheme?: 'light' | 'dark';
 	}
+}
+
+const releaseLabel = `v${pkgVersion}`;
+const versionBadge = document.getElementById('pkg-version');
+if (versionBadge) {
+	versionBadge.textContent = releaseLabel;
+	versionBadge.setAttribute('title', `globe-chart ${releaseLabel} on npm`);
+}
+const versionFoot = document.getElementById('pkg-version-foot');
+if (versionFoot) {
+	versionFoot.textContent = releaseLabel;
 }
 
 // Warm the heavy WebGL chunk while the hero is on screen.

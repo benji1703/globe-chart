@@ -17,6 +17,13 @@ Country GeoJSON / TopoJSON is packed under `src/data/`. To rebuild from a full
 Natural Earth GeoJSON file: `npm run slim-geo -- path/to/full.geojson`
 (optional `QUANTIZE=1000` for a smaller topology).
 
+### Demo site theme
+
+The Pages demo stores preference in `localStorage['globe-chart-demo-theme']`
+(`light` / `dark`); otherwise it follows `prefers-color-scheme`. A blocking
+script in `demo/index.html` applies the theme before first paint to avoid a
+flash of the wrong scheme.
+
 ## Guidelines
 
 - Keep the Lit shell thin; put logic in focused modules under `src/`.

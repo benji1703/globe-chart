@@ -97,6 +97,24 @@ body {
 	text-decoration: none;
 }
 
+.version {
+	font-family: 'JetBrains Mono', ui-monospace, monospace;
+	font-size: 0.75rem;
+	font-weight: 500;
+	letter-spacing: 0.02em;
+	color: var(--muted);
+	text-decoration: none;
+	border: 1px solid var(--line);
+	padding: 0.15rem 0.45rem;
+	border-radius: 4px;
+	line-height: 1.2;
+}
+
+.version:hover {
+	color: var(--ink);
+	border-color: color-mix(in srgb, var(--ink) 28%, var(--line));
+}
+
 .nav {
 	display: flex;
 	gap: 1rem;

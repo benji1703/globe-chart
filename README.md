@@ -12,9 +12,6 @@ Country outlines come from [Natural Earth](https://www.naturalearthdata.com/)
 
 ## Demo
 
-Try the interactive demo:
-[https://benji1703.github.io/globe-chart/](https://benji1703.github.io/globe-chart/)
-
 [![globe-chart dark theme demo with country choropleth and hover tooltip](https://raw.githubusercontent.com/benji1703/globe-chart/main/docs/images/demo-dark.png)](https://benji1703.github.io/globe-chart/)
 
 ## License
@@ -156,14 +153,6 @@ CSS custom properties on the host:
 Problems surface as in-component toasts (skipped rows, init failures, empty data)
 and matching `error` / `warning` DOM events. Disable UI with
 `config.toasts.enabled = false` if the host app handles events only.
-
-## Demo
-
-Live demo: https://benji1703.github.io/globe-chart/
-
-Theme preference (Pages site): `localStorage['globe-chart-demo-theme']` if set to
-`light` or `dark`; otherwise `prefers-color-scheme`. A blocking script in
-`demo/index.html` applies this before first paint so the page does not flash.
 
 ## Attribution
 
