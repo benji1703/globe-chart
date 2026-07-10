@@ -9,8 +9,23 @@ export default defineConfig({
 			formats: ['es'],
 			fileName: 'globe-chart',
 		},
+		assetsInlineLimit: (filePath: string) => {
+			// Never data-URL the country topology — keep a real fetchable asset.
+			if (filePath.includes('ne_110m_admin_0_countries')) return 0;
+			return 4096;
+		},
 		rollupOptions: {
-			external: ['lit', 'globe.gl', 'three'],
+			// Keep lit subpaths + topojson-client external so they are not inlined.
+			external: [
+				'lit',
+				/^lit\//,
+				'globe.gl',
+				'three',
+				'topojson-client',
+			],
+			output: {
+				assetFileNames: '[name][extname]',
+			},
 		},
 	},
 	test: {

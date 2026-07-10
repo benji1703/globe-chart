@@ -3,6 +3,17 @@ export interface GeoFeature {
 	geometry?: { type: string; coordinates: unknown };
 }
 
+/**
+ * Minimum shape for choropleth rows. Extra fields are allowed and passed through
+ * to tooltips / legend callbacks via the index signature.
+ */
+export interface DataRow {
+	iso?: unknown;
+	value?: unknown;
+	name?: unknown;
+	[key: string]: unknown;
+}
+
 export interface ThemeColors {
 	ocean: string;
 	empty: string;
@@ -21,7 +32,7 @@ export interface LegendEntry {
 	color: string;
 	lat: number;
 	lng: number;
-	row?: Record<string, unknown>;
+	row?: DataRow;
 }
 
 export interface PointOfView {
@@ -50,7 +61,7 @@ export interface SkippedRow {
 
 export interface ValueIndexResult {
 	valueMap: Record<string, number>;
-	rowByIso: Record<string, Record<string, unknown>>;
+	rowByIso: Record<string, DataRow>;
 	maxValue: number;
 	skipped: SkippedRow[];
 	validCount: number;
@@ -63,7 +74,7 @@ export interface CountryEventDetail {
 	color: string;
 	lat?: number;
 	lng?: number;
-	row?: Record<string, unknown>;
+	row?: DataRow;
 }
 
 export interface FeedbackEventDetail {

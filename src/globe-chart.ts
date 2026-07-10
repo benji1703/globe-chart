@@ -28,6 +28,7 @@ import {
 } from './toast.js';
 import type {
 	CountryEventDetail,
+	DataRow,
 	FeedbackEventDetail,
 	GeoFeature,
 	LegendEntry,
@@ -36,14 +37,14 @@ import type {
 import { renderLegend } from './ui/legend.js';
 import { globeChartStyles } from './ui/styles.js';
 import { renderToasts } from './ui/toasts.js';
-import { buildValueIndex } from './value-index.js';
+import { buildValueIndex, parseDataRows } from './value-index.js';
 import { yieldToMain } from './yield-main.js';
 
 @customElement('globe-chart')
 export class GlobeChart extends LitElement {
 	static override styles = globeChartStyles;
 
-	@property({ type: Array }) data: Record<string, unknown>[] = [];
+	@property({ type: Array }) data: DataRow[] = [];
 
 	@property({ attribute: 'iso-field' }) isoField = 'iso';
 
@@ -107,6 +108,9 @@ export class GlobeChart extends LitElement {
 	/** First choropleth paint uses 0ms transitions to avoid a multi-hundred-ms long task. */
 	private hasPaintedPolygons = false;
 	private polygonClickBound = false;
+	/** Defer WebGL until the host is near the viewport (demo/pages cold load). */
+	private visibleEnough = typeof IntersectionObserver === 'undefined';
+	private visibilityObserver?: IntersectionObserver;
 	private revealTimer?: ReturnType<typeof setTimeout>;
 	private warningTimers = new Map<string, ReturnType<typeof setTimeout>>();
 	private readyDispatched = false;
@@ -130,6 +134,25 @@ export class GlobeChart extends LitElement {
 		}
 		this.syncLegendBreakpointListener();
 		this.applyLegendCollapseDefault();
+		this.observeVisibility();
+	}
+
+	private observeVisibility() {
+		if (this.visibleEnough || typeof IntersectionObserver !== 'function') {
+			this.visibleEnough = true;
+			return;
+		}
+		this.visibilityObserver = new IntersectionObserver(
+			(entries) => {
+				if (!entries.some((e) => e.isIntersecting)) return;
+				this.visibilityObserver?.disconnect();
+				this.visibilityObserver = undefined;
+				this.visibleEnough = true;
+				if (!this.scene.globe && !this.globeCreating) void this.createGlobe();
+			},
+			{ rootMargin: '120px' },
+		);
+		this.visibilityObserver.observe(this);
 	}
 
 	override render() {
@@ -407,7 +430,7 @@ export class GlobeChart extends LitElement {
 		}
 
 		if (!this.scene.globe) {
-			if (!this.globeCreating) void this.createGlobe();
+			if (!this.globeCreating && this.visibleEnough) void this.createGlobe();
 			return;
 		}
 
@@ -439,7 +462,7 @@ export class GlobeChart extends LitElement {
 	}
 
 	private applyConfigMerge() {
-		const { config, unknownKeys, invalid } = mergeConfig(this.config);
+		const { config, unknownKeys, invalid, invalidPaths } = mergeConfig(this.config);
 		if (this.legendPosition === 'left' || this.legendPosition === 'right') {
 			config.legend.position = this.legendPosition;
 		}
@@ -461,6 +484,15 @@ export class GlobeChart extends LitElement {
 				body: `Ignored: ${unknownKeys.join(', ')}.`,
 				details: unknownKeys.join('\n'),
 				code: 'unknown-config-keys',
+				once: true,
+			});
+		} else if (invalidPaths.length) {
+			this.notify({
+				level: 'warning',
+				title: 'Invalid config values',
+				body: `Coerced or ignored: ${invalidPaths.join(', ')}.`,
+				details: invalidPaths.join('\n'),
+				code: 'invalid-config-paths',
 				once: true,
 			});
 		}
@@ -545,8 +577,18 @@ export class GlobeChart extends LitElement {
 	}
 
 	private computeIndex() {
+		const parsed = parseDataRows(this.data);
+		if (parsed.invalid) {
+			this.notify({
+				level: 'warning',
+				title: 'Invalid data',
+				body: 'Expected an array of row objects. Data was ignored.',
+				code: 'invalid-data',
+				once: true,
+			});
+		}
 		return buildValueIndex({
-			data: this.data,
+			data: parsed.rows,
 			isoField: this.isoField,
 			valueField: this.valueField,
 		});
@@ -827,6 +869,9 @@ export class GlobeChart extends LitElement {
 		this.polygonClickBound = false;
 		this.hasCentered = false;
 		this.readyDispatched = false;
+		this.visibleEnough = typeof IntersectionObserver === 'undefined';
+		this.visibilityObserver?.disconnect();
+		this.visibilityObserver = undefined;
 		clearTimeout(this.revealTimer);
 		clearTimeout(this.searchDebounceTimer);
 		this.searchAbort?.abort();

@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { mergeConfig, DEFAULT_CONFIG } from './config';
+import { mergeConfig, DEFAULT_CONFIG, normalizeCollapseOnSelect } from './config';
 import { scaleColor } from './color-scale';
 import { isoOf, pickIso, expandCountryFeatures, featureName } from './iso';
-import { filterLegendEntries, paginateItems } from './legend-query';
+import { filterLegendEntries, mergeLegendByIso, paginateItems } from './legend-query';
 import { createToastState, dismissToast, pushToast } from './toast';
 import type { LegendEntry } from './types';
-import { buildValueIndex } from './value-index';
+import { buildValueIndex, parseDataRows } from './value-index';
 
 describe('mergeConfig', () => {
 	it('returns defaults for nullish input', () => {
@@ -47,6 +47,38 @@ describe('mergeConfig', () => {
 		const { unknownKeys } = mergeConfig({ legend: { title: 'X' }, foo: 1 });
 		expect(unknownKeys).toContain('foo');
 	});
+
+	it('records invalid nested values without crashing', () => {
+		const { config, invalidPaths } = mergeConfig({
+			legend: {
+				pageSize: '10' as unknown as number,
+				collapseMode: 'nope' as 'mobile',
+				search: { mode: 'bogus' as 'local' },
+			},
+			toasts: { position: 'middle' as 'bottom-end' },
+		});
+		expect(config.legend.pageSize).toBe(DEFAULT_CONFIG.legend.pageSize);
+		expect(config.legend.collapseMode).toBe(DEFAULT_CONFIG.legend.collapseMode);
+		expect(config.legend.search.mode).toBe(DEFAULT_CONFIG.legend.search.mode);
+		expect(config.toasts.position).toBe(DEFAULT_CONFIG.toasts.position);
+		expect(invalidPaths).toEqual(
+			expect.arrayContaining([
+				'legend.pageSize',
+				'legend.collapseMode',
+				'legend.search.mode',
+				'toasts.position',
+			]),
+		);
+	});
+});
+
+describe('normalizeCollapseOnSelect', () => {
+	it('maps booleans and valid strings', () => {
+		expect(normalizeCollapseOnSelect(true)).toBe('always');
+		expect(normalizeCollapseOnSelect(false)).toBe('never');
+		expect(normalizeCollapseOnSelect('mobile')).toBe('mobile');
+		expect(normalizeCollapseOnSelect('nope' as 'mobile')).toBe('mobile');
+	});
 });
 
 describe('legend-query', () => {
@@ -66,6 +98,30 @@ describe('legend-query', () => {
 		expect(page.items).toHaveLength(1);
 		expect(page.page).toBe(2);
 		expect(page.totalPages).toBe(2);
+	});
+
+	it('merges by iso preferring extra fields', () => {
+		const merged = mergeLegendByIso(sample, [
+			{ iso: 'FR', name: 'France (remote)', value: 99, color: '#111', lat: 1, lng: 2 },
+		]);
+		const fr = merged.find((e) => e.iso === 'FR');
+		expect(fr?.name).toBe('France (remote)');
+		expect(fr?.value).toBe(99);
+		expect(merged[0].iso).toBe('FR');
+	});
+});
+
+describe('parseDataRows', () => {
+	it('accepts object rows and drops junk', () => {
+		const parsed = parseDataRows([{ iso: 'US', value: 1 }, null, 'x', { iso: 'FR', value: 2 }]);
+		expect(parsed.invalid).toBe(false);
+		expect(parsed.dropped).toBe(2);
+		expect(parsed.rows).toHaveLength(2);
+	});
+
+	it('flags non-arrays', () => {
+		expect(parseDataRows({ iso: 'US' }).invalid).toBe(true);
+		expect(parseDataRows({ iso: 'US' }).rows).toEqual([]);
 	});
 });
 

@@ -25,11 +25,28 @@ export function featuresFromTopology(topology: CountriesTopology): GeoFeature[] 
 	}));
 }
 
-/** Dynamic import of the packaged TopoJSON asset. */
+/**
+ * Resolve the packaged TopoJSON URL without a static Vite asset import (lib mode
+ * would otherwise inline it as a giant data: URL). The file is copied next to
+ * the bundle at build time (`npm run build` / demo plugin).
+ */
+function countriesJsonUrl(): string {
+	const file = ['ne_110m_admin_0_countries', 'json'].join('.');
+	// Dev server: absolute path under /src/data (avoids Vite emitting a second hashed copy).
+	if (import.meta.env?.DEV) {
+		return `/src/data/${file}`;
+	}
+	// Production: JSON is copied beside this module (dist/ or demo/dist/assets/).
+	return new URL(file, import.meta.url).href;
+}
+
+/** Load packaged TopoJSON via fetch (raw JSON asset). */
 export async function loadCountryFeatures(): Promise<GeoFeature[]> {
-	const mod = await import('./data/ne_110m_admin_0_countries.json');
-	const raw = mod as unknown as CountriesTopology & { default?: CountriesTopology };
-	const topology = raw.default ?? raw;
+	const res = await fetch(countriesJsonUrl());
+	if (!res.ok) {
+		throw new Error(`Country map asset failed to load (${res.status})`);
+	}
+	const topology = (await res.json()) as CountriesTopology;
 	if (!topology || topology.type !== 'Topology') {
 		throw new Error('Country map asset is not TopoJSON');
 	}

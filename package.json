@@ -50,11 +50,12 @@
 	"scripts": {
 		"dev": "storybook dev -p 6006",
 		"dev:demo": "vite --config demo/vite.config.ts",
-		"build": "vite build && tsc -p tsconfig.json --emitDeclarationOnly",
+		"build": "vite build && tsc -p tsconfig.json --emitDeclarationOnly && cp src/data/ne_110m_admin_0_countries.json dist/ne_110m_admin_0_countries.json",
 		"build:demo": "vite build --config demo/vite.config.ts",
 		"build:storybook": "storybook build",
 		"test": "vitest run",
-		"typecheck": "tsc -p tsconfig.json --noEmit",
+		"typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.typecheck.json --noEmit",
+		"typecheck:src": "tsc -p tsconfig.json --noEmit",
 		"slim-geo": "node scripts/slim-countries.mjs",
 		"prepublishOnly": "npm test && npm run typecheck && npm run build"
 	},

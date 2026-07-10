@@ -7,16 +7,15 @@
 		"strict": true,
 		"experimentalDecorators": true,
 		"useDefineForClassFields": false,
-		"rootDir": "src",
-		"declaration": true,
-		"declarationDir": "dist",
-		"outDir": "dist",
 		"skipLibCheck": true,
 		"resolveJsonModule": true,
 		"isolatedModules": true,
-		"noEmit": false,
+		"noEmit": true,
 		"types": ["vite/client"]
 	},
-	"include": ["src"],
-	"exclude": ["src/**/*.test.ts"]
+	"include": [
+		"src/**/*.ts",
+		"stories/**/*.ts",
+		".storybook/**/*.ts"
+	]
 }

@@ -1,15 +1,46 @@
-import type { SkippedRow, ValueIndexResult } from './types.js';
+import type { DataRow, SkippedRow, ValueIndexResult } from './types.js';
 
 export interface ValueIndexOptions {
-	data: Record<string, unknown>[];
+	data: DataRow[];
 	isoField: string;
 	valueField: string;
+}
+
+export interface ParseDataRowsResult {
+	rows: DataRow[];
+	invalid: boolean;
+	/** Non-object entries that were dropped before indexing. */
+	dropped: number;
+}
+
+/**
+ * Coerce host `data` into a row array. Non-arrays yield `invalid` + empty rows.
+ * Non-object elements are dropped (counted in `dropped`).
+ */
+export function parseDataRows(input: unknown): ParseDataRowsResult {
+	if (input == null) {
+		return { rows: [], invalid: false, dropped: 0 };
+	}
+	if (!Array.isArray(input)) {
+		return { rows: [], invalid: true, dropped: 0 };
+	}
+
+	const rows: DataRow[] = [];
+	let dropped = 0;
+	for (const item of input) {
+		if (item != null && typeof item === 'object' && !Array.isArray(item)) {
+			rows.push(item as DataRow);
+		} else {
+			dropped += 1;
+		}
+	}
+	return { rows, invalid: false, dropped };
 }
 
 export function buildValueIndex(options: ValueIndexOptions): ValueIndexResult {
 	const { data, isoField, valueField } = options;
 	const valueMap: Record<string, number> = {};
-	const rowByIso: Record<string, Record<string, unknown>> = {};
+	const rowByIso: Record<string, DataRow> = {};
 	const skipped: SkippedRow[] = [];
 
 	data.forEach((row, index) => {
