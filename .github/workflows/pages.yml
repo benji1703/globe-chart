@@ -1,6 +1,6 @@
 name: Pages
 
-# Enable after the GitHub repo exists and Pages is set to GitHub Actions.
+# Requires Settings → Pages → Build and deployment → Source: GitHub Actions.
 on:
   workflow_dispatch:
   push:
