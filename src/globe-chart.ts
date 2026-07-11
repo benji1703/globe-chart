@@ -27,7 +27,7 @@ import type {
 import { definedProps, isGeoFeature } from './core/types.js';
 import { buildValueIndex, parseDataRows } from './core/value-index.js';
 import { loadCountryFeatures } from './load-countries.js';
-import { ChoroplethLayer } from './scene/choropleth-layer.js';
+import { buildFeatureLabel, ChoroplethLayer } from './scene/choropleth-layer.js';
 import { GlobeScene } from './scene/globe-scene.js';
 import { renderLegend } from './ui/legend-view.js';
 import { globeChartStyles } from './ui/styles/index.js';
@@ -121,6 +121,7 @@ export class GlobeChart extends LitElement {
 	private readyDispatched = false;
 	private lastSkipSignature = '';
 	private revealTimer: ReturnType<typeof setTimeout> | undefined;
+	private pinLabelTimer: ReturnType<typeof setTimeout> | undefined;
 
 	private readonly themeController = new ThemeController(this, () => {
 		if (this.theme === 'auto' && this.scene.globe) this.applyVisual(false);
@@ -523,6 +524,16 @@ export class GlobeChart extends LitElement {
 		if (!iso) return;
 		const index = this.computeIndex();
 		const colors = this.themeController.resolve(this.resolvedConfig.colors);
+
+		// Pin the tooltip to the clicked country for the duration of the camera animation.
+		// globe.gl raycasts from the last pointer position on every rAF frame; as the camera
+		// flies the raycast hits a different country, causing tooltip drift on mobile.
+		const label = buildFeatureLabel(poly, index, colors, this.resolvedConfig);
+		this.layer.pinLabel(label);
+		clearTimeout(this.pinLabelTimer);
+		const flyMs = this.motionMs(this.resolvedConfig.camera.durations.navigate, 'camera');
+		this.pinLabelTimer = setTimeout(() => this.layer.pinLabel(null), flyMs + 300);
+
 		const fromLegend = this.currentLegendEntries().find((e) => e.iso === iso);
 		if (fromLegend) {
 			this.legendController.select(fromLegend);
@@ -641,6 +652,8 @@ export class GlobeChart extends LitElement {
 		this.hasCentered = false;
 		this.readyDispatched = false;
 		clearTimeout(this.revealTimer);
+		clearTimeout(this.pinLabelTimer);
+		this.layer.pinLabel(null);
 		this.scene.destroy();
 	}
 }

@@ -23,7 +23,44 @@ function featureFromPolygon(poly: object): GeoFeature | null {
 	return isGeoFeature(poly) ? poly : null;
 }
 
+export function buildFeatureLabel(
+	feat: object,
+	index: ValueIndexResult,
+	colors: ThemeColors,
+	config: GlobeChartConfig,
+): string {
+	const feature = featureFromPolygon(feat);
+	if (!feature) return '';
+	const { valueMap, maxValue, rowByIso } = index;
+	const iso = isoOf(feature);
+	const value = valueMap[iso] ?? 0;
+	const color = scaleColor(value, maxValue, colors);
+	const name = featureName(feature, iso);
+	const row = rowByIso[iso];
+	const tooltipFn = config.labels.tooltip;
+	const emptyLabel = config.legend.emptyLabel;
+	const format = config.legend.formatValue ?? ((v: number) => formatValue(v, emptyLabel));
+
+	if (tooltipFn) {
+		return tooltipFn({ iso, name, value, color, ...definedProps({ row }) });
+	}
+
+	return [
+		`<div class="globe-tip">`,
+		`<span class="globe-tip__swatch" style="background:${color}"></span>`,
+		`<span class="globe-tip__name">${escapeHtml(name)}</span>`,
+		`<span class="globe-tip__value">${escapeHtml(format(value, row))}</span>`,
+		`</div>`,
+	].join('');
+}
+
 export class ChoroplethLayer {
+	private _pinnedLabel: string | null = null;
+
+	pinLabel(label: string | null) {
+		this._pinnedLabel = label;
+	}
+
 	paint(options: ChoroplethPaintOptions) {
 		const { globe, features, index, colors, config, loading, transitionMs } = options;
 		const stroke = config.colors.stroke ?? colors.border ?? config.globe.strokeColor;
@@ -46,10 +83,7 @@ export class ChoroplethLayer {
 			return;
 		}
 
-		const { valueMap, maxValue, rowByIso } = index;
-		const tooltipFn = config.labels.tooltip;
-		const emptyLabel = config.legend.emptyLabel;
-		const format = config.legend.formatValue ?? ((v: number) => formatValue(v, emptyLabel));
+		const { valueMap, maxValue } = index;
 
 		// Prefer CapMaterial (polygonOffset / depthWrite). CapColor alone is enough for
 		// picking/labels; avoid a second per-feature color pass when materials are set.
@@ -70,31 +104,8 @@ export class ChoroplethLayer {
 			.polygonSideColor(() => 'rgba(0,0,0,0)')
 			.polygonStrokeColor(() => stroke)
 			.polygonLabel((feat) => {
-				const feature = featureFromPolygon(feat);
-				if (!feature) return '';
-				const iso = isoOf(feature);
-				const value = valueMap[iso] ?? 0;
-				const color = scaleColor(value, maxValue, colors);
-				const name = featureName(feature, iso);
-				const row = rowByIso[iso];
-
-				if (tooltipFn) {
-					return tooltipFn({
-						iso,
-						name,
-						value,
-						color,
-						...definedProps({ row }),
-					});
-				}
-
-				return [
-					`<div class="globe-tip">`,
-					`<span class="globe-tip__swatch" style="background:${color}"></span>`,
-					`<span class="globe-tip__name">${escapeHtml(name)}</span>`,
-					`<span class="globe-tip__value">${escapeHtml(format(value, row))}</span>`,
-					`</div>`,
-				].join('');
+				if (this._pinnedLabel !== null) return this._pinnedLabel;
+				return buildFeatureLabel(feat, index, colors, config);
 			});
 	}
 }
