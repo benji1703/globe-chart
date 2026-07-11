@@ -178,6 +178,17 @@ Problems surface as in-component toasts (skipped rows, init failures, empty data
 and matching `error` / `warning` DOM events. Disable UI with
 `config.toasts.enabled = false` if the host app handles events only.
 
+## Framework demos
+
+Live integrations showing `globe-chart` in every major framework, each with a 2026-era ITDR/ISPM security dashboard:
+
+| Framework | Demo | Source |
+| --------- | ---- | ------ |
+| React | [globe-chart-demo-react](https://benji1703.github.io/globe-chart-demo-react/) | [benji1703/globe-chart-demo-react](https://github.com/benji1703/globe-chart-demo-react) |
+| Vue 3 | [globe-chart-demo-vue](https://benji1703.github.io/globe-chart-demo-vue/) | [benji1703/globe-chart-demo-vue](https://github.com/benji1703/globe-chart-demo-vue) |
+| Svelte | [globe-chart-demo-svelte](https://benji1703.github.io/globe-chart-demo-svelte/) | [benji1703/globe-chart-demo-svelte](https://github.com/benji1703/globe-chart-demo-svelte) |
+| Angular | [globe-chart-demo-angular](https://benji1703.github.io/globe-chart-demo-angular/) | [benji1703/globe-chart-demo-angular](https://github.com/benji1703/globe-chart-demo-angular) |
+
 ## Attribution
 
 Natural Earth public-domain country boundaries — see `NOTICE`.
