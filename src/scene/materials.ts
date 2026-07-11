@@ -8,14 +8,21 @@ export function landCapMaterial(color: string): MeshBasicMaterial {
 	const key = color.toLowerCase();
 	let material = landCapMaterials.get(key);
 	if (!material) {
-		material = new MeshBasicMaterial({
+		const created = new MeshBasicMaterial({
 			color,
 			polygonOffset: true,
 			polygonOffsetFactor: -4,
 			polygonOffsetUnits: -4,
 			depthWrite: false,
 		});
-		landCapMaterials.set(key, material);
+		// three-globe disposes cap materials it does not own when a globe is
+		// torn down (polygonsData([]) → deallocate). Evict on dispose so a
+		// dead material is never served to the next globe instance.
+		created.addEventListener('dispose', () => {
+			if (landCapMaterials.get(key) === created) landCapMaterials.delete(key);
+		});
+		landCapMaterials.set(key, created);
+		material = created;
 	}
 	material.depthWrite = false;
 	return material;
