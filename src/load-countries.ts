@@ -61,10 +61,10 @@ function countriesJsonUrl(): string {
 	const file = ['ne_110m_admin_0_countries', 'json'].join('.');
 	// Dev: resolve next to this source module (…/src/data/…).
 	// Prod: JSON sits beside the emitted JS (dist/ or demo/dist/assets/).
-	if (import.meta.env?.DEV) {
-		return new URL(`./data/${file}`, import.meta.url).href;
-	}
-	return new URL(file, import.meta.url).href;
+	// The path is assembled from opaque parts so Vite's static analysis does
+	// not inline it as a data: URL or emit a duplicate hashed copy.
+	const dir = import.meta.env?.DEV ? ['.', 'data', ''].join('/') : '';
+	return new URL(dir + file, import.meta.url).href;
 }
 
 /** Load packaged TopoJSON via fetch (raw JSON asset). */

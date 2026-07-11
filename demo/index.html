@@ -57,22 +57,6 @@
 			href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap"
 			rel="stylesheet"
 		/>
-		<!--
-			Country topology is fetched by src/load-countries.ts via `fetch()`, deferred
-			behind IntersectionObserver + a scheduler yield so it never competes with
-			first paint. Preloading it here starts the download immediately (in
-			parallel with the JS chain that would otherwise gate it) while the
-			deferral logic still controls when it's actually used. Production-build
-			path only — the unhashed filename is written by the copy-countries-topojson
-			Vite plugin in demo/vite.config.ts.
-		-->
-		<link
-			rel="preload"
-			href="./assets/ne_110m_admin_0_countries.json"
-			as="fetch"
-			type="application/json"
-			crossorigin="anonymous"
-		/>
 		<link rel="stylesheet" href="./styles.css" />
 	</head>
 	<body>

@@ -1,6 +1,6 @@
 {
 	"name": "globe-chart",
-	"version": "0.2.4",
+	"version": "0.2.5",
 	"description": "Framework-agnostic <globe-chart> web component for country polygon choropleths on a 3D globe.",
 	"license": "MIT",
 	"type": "module",
@@ -29,10 +29,12 @@
 		".": {
 			"types": "./dist/index.d.ts",
 			"import": "./dist/globe-chart.js"
-		}
+		},
+		"./stubs/*": "./stubs/*"
 	},
 	"files": [
 		"dist",
+		"stubs",
 		"LICENSE",
 		"COMMERCIAL.md",
 		"NOTICE",

@@ -31,6 +31,30 @@ npm install globe-chart
 
 `lit`, `globe.gl`, and `three` are installed as dependencies of this package.
 
+### Shrink your bundle (recommended)
+
+`globe-chart` only uses globe.gl's polygons layer, but `three-globe` (a globe.gl
+dependency) statically imports the three.js **WebGPU renderer**, **TSL shader
+language**, and **h3-js** for layers this component never touches (heatmaps,
+hexbins). Aliasing them to the stubs shipped with this package cuts the
+globe.gl chunk roughly in half (~460 kB → ~220 kB gzipped):
+
+```ts
+// vite.config.ts
+export default defineConfig({
+	resolve: {
+		alias: {
+			'three/webgpu': 'globe-chart/stubs/three-webgpu.js',
+			'three/tsl': 'globe-chart/stubs/three-tsl.js',
+			'h3-js': 'globe-chart/stubs/h3-js.js',
+		},
+	},
+});
+```
+
+Webpack equivalent: `resolve.alias` with the same mappings. Skip this if other
+parts of your app use those globe.gl layers or import `three/webgpu` directly.
+
 ## Usage
 
 ```html
