@@ -1,9 +1,9 @@
 import { html, nothing, type TemplateResult } from 'lit';
 
-import type { LegendConfig } from '../config.js';
-import type { LegendEntry } from '../types.js';
-import type { PageSlice } from '../legend-query.js';
-import { formatValue } from './format.js';
+import type { LegendConfig } from '../core/config.js';
+import type { LegendEntry } from '../core/types.js';
+import type { PageSlice } from '../core/legend-query.js';
+import { formatValue } from '../core/format.js';
 
 export interface LegendRenderOptions {
 	entries: LegendEntry[];

@@ -1,6 +1,7 @@
 export { GlobeChart } from './globe-chart.js';
 export { globeChartMockData } from './globe-chart.mock-data.js';
 export type {
+	ColorsConfig,
 	GlobeChartConfig,
 	GlobeChartConfigInput,
 	LegendCollapseMode,
@@ -9,13 +10,9 @@ export type {
 	LegendSearchConfig,
 	LegendSearchHit,
 	LegendSearchMode,
-	ColorsConfig,
 	ToastsConfig,
-} from './config.js';
-export { mergeConfig, DEFAULT_CONFIG, normalizeCollapseOnSelect } from './config.js';
-export { expandCountryFeatures, featureName, isoOf } from './iso.js';
-export { featuresFromTopology, loadCountryFeatures } from './load-countries.js';
-export type { CountriesTopology } from './load-countries.js';
+} from './core/config.js';
+export { DEFAULT_CONFIG, mergeConfig, normalizeCollapseOnSelect } from './core/config.js';
 export type {
 	CountryEventDetail,
 	CountryProperties,
@@ -26,19 +23,6 @@ export type {
 	GlobeChartEventMap,
 	LegendEntry,
 	LegendSearchEventDetail,
-	SkipReason,
 	ThemeColors,
 	ToastLevel,
-	ToastMessage,
-	ValueIndexResult,
-} from './types.js';
-export {
-	assertNever,
-	definedProps,
-	isDataRow,
-	isGeoFeature,
-	isRecord,
-} from './types.js';
-export { filterLegendEntries, mergeLegendByIso, paginateItems } from './legend-query.js';
-export { buildValueIndex, parseDataRows } from './value-index.js';
-export type { ParseDataRowsResult, ValueIndexOptions } from './value-index.js';
+} from './core/types.js';

@@ -1,8 +1,8 @@
 import { feature } from 'topojson-client';
 import type { GeometryCollection, Topology } from 'topojson-specification';
 
-import type { CountryProperties, GeoFeature, GeoGeometry } from './types.js';
-import { isRecord } from './types.js';
+import type { CountryProperties, GeoFeature, GeoGeometry } from './core/types.js';
+import { isRecord } from './core/types.js';
 
 export type CountriesTopology = Topology<{
 	countries: GeometryCollection<{ i?: string; n?: string }>;

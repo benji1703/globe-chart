@@ -1,12 +1,12 @@
 import type { GlobeInstance } from 'globe.gl';
 
-import { scaleColor } from '../color-scale.js';
-import type { GlobeChartConfig } from '../config.js';
-import { featureName, isoOf } from '../iso.js';
-import { landCapMaterial, solidColorImage } from '../materials.js';
-import type { GeoFeature, ThemeColors, ValueIndexResult } from '../types.js';
-import { definedProps, isGeoFeature } from '../types.js';
-import { escapeHtml, formatValue } from '../ui/format.js';
+import { scaleColor } from '../core/color-scale.js';
+import type { GlobeChartConfig } from '../core/config.js';
+import { featureName, isoOf } from '../core/iso.js';
+import { landCapMaterial, solidColorImage } from './materials.js';
+import type { GeoFeature, ThemeColors, ValueIndexResult } from '../core/types.js';
+import { definedProps, isGeoFeature } from '../core/types.js';
+import { escapeHtml, formatValue } from '../core/format.js';
 
 export interface ChoroplethPaintOptions {
 	globe: GlobeInstance;

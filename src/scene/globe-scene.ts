@@ -1,8 +1,8 @@
 import type { GlobeInstance } from 'globe.gl';
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-import type { GlobeChartConfig } from '../config.js';
-import type { PointOfView } from '../types.js';
+import type { GlobeChartConfig } from '../core/config.js';
+import type { PointOfView } from '../core/types.js';
 
 export interface GlobeSceneOptions {
 	element: HTMLElement;

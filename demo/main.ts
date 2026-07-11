@@ -1,6 +1,6 @@
-import type { LegendCollapseMode } from '../src/config.js';
+import type { LegendCollapseMode } from '../src/core/config.js';
 import { globeChartMockData } from '../src/globe-chart.mock-data.js';
-import type { DataRow } from '../src/types.js';
+import type { DataRow } from '../src/core/types.js';
 import { datasetGet, datasetSet, isDemoTheme, isLegendSide, isOneOf } from '../src/util.js';
 import type { GlobeChart } from '../src/globe-chart.js';
 import { version as pkgVersion } from '../package.json';

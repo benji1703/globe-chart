@@ -1,6 +1,6 @@
 {
 	"name": "globe-chart",
-	"version": "0.2.3",
+	"version": "0.2.4",
 	"description": "Framework-agnostic <globe-chart> web component for country polygon choropleths on a 3D globe.",
 	"license": "MIT",
 	"type": "module",

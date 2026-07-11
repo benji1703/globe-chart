@@ -1,6 +1,6 @@
 import type { DataRow, PointOfView } from './types.js';
 import { definedProps, isRecord } from './types.js';
-import { isOneOf } from './util.js';
+import { isOneOf } from '../util.js';
 
 export type ToastPosition = 'bottom-end' | 'bottom-start' | 'top-end' | 'top-start';
 

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { DataRow } from './types.js';
+import type { DataRow } from './core/types.js';
 
 class FakeResizeObserver {
 	observe() {

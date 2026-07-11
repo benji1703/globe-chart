@@ -1,7 +1,7 @@
 import { html, nothing, type TemplateResult } from 'lit';
 
-import type { ToastPosition } from '../config.js';
-import type { ToastMessage } from '../types.js';
+import type { ToastPosition } from '../core/config.js';
+import type { ToastMessage } from '../core/types.js';
 
 export interface ToastRenderOptions {
 	items: ToastMessage[];

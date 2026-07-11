@@ -8,10 +8,10 @@ import type {
 	LegendSearchHit,
 	LegendSearchMode,
 	ToastPosition,
-} from '../src/config.js';
+} from '../src/core/config.js';
 import { globeChartMockData } from '../src/globe-chart.mock-data.js';
-import type { DataRow } from '../src/types.js';
-import { definedProps } from '../src/types.js';
+import type { DataRow } from '../src/core/types.js';
+import { definedProps } from '../src/core/types.js';
 
 /** Flat Storybook controls — assembled into `config` + element props at render time. */
 export type PlaygroundArgs = {

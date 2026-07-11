@@ -201,8 +201,8 @@ describe('iso', () => {
 
 describe('featuresFromTopology', () => {
 	it('expands shipped TopoJSON into GeoJSON features', async () => {
-		const { featuresFromTopology } = await import('./load-countries.js');
-		const topology = await import('./data/ne_110m_admin_0_countries.json');
+		const { featuresFromTopology } = await import('../load-countries.js');
+		const topology = await import('../data/ne_110m_admin_0_countries.json');
 		const topo = 'default' in topology ? topology.default : topology;
 		const features = featuresFromTopology(topo as Parameters<typeof featuresFromTopology>[0]);
 		expect(features.length).toBe(177);
