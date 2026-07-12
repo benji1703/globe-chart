@@ -23,6 +23,9 @@ export type {
 	GlobeChartEventMap,
 	LegendEntry,
 	LegendSearchEventDetail,
+	PointOfView,
 	ThemeColors,
 	ToastLevel,
 } from './core/types.js';
+export { featuresFromTopology, loadCountryFeatures } from './load-countries.js';
+export type { CountriesTopology } from './load-countries.js';

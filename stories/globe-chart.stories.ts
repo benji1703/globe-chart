@@ -183,7 +183,7 @@ const playgroundDefaults: PlaygroundArgs = {
 	autoCenter: true,
 	autoRotate: false,
 	autoRotateSpeed: 0.35,
-	legendTitle: 'Risk by country',
+	legendTitle: 'Values by country',
 	legendSubtitle: 'Sample dataset',
 	showScale: true,
 	showCount: true,
@@ -560,7 +560,7 @@ export const CollapsibleAlways: Story = {
 	},
 };
 
-export const CustomRiskColors: Story = {
+export const CustomColors: Story = {
 	args: {
 		showLegend: true,
 		colorLow: '#f5c518',

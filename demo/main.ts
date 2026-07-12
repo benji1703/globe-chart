@@ -26,7 +26,7 @@ if (versionFoot) {
 // Warm the heavy WebGL chunk while the hero is on screen.
 void import('globe.gl');
 
-const riskData = globeChartMockData;
+const sampleData = globeChartMockData;
 
 const salesData: DataRow[] = [
 	{ iso: 'US', value: 4200, name: 'United States' },
@@ -126,8 +126,8 @@ async function bootDemo() {
 			globe.data = salesData;
 			if (!datasetGet(legendTitle, 'touched')) legendTitle.value = 'Sales by country';
 		} else {
-			globe.data = riskData;
-			if (!datasetGet(legendTitle, 'touched')) legendTitle.value = 'Risk by country';
+			globe.data = sampleData;
+			if (!datasetGet(legendTitle, 'touched')) legendTitle.value = 'Values by country';
 		}
 		syncConfig();
 		updateSnippet();

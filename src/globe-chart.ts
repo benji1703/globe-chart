@@ -26,7 +26,11 @@ import type {
 } from './core/types.js';
 import { definedProps, isGeoFeature } from './core/types.js';
 import { buildValueIndex, parseDataRows } from './core/value-index.js';
-import { loadCountryFeatures } from './load-countries.js';
+import {
+	featuresFromTopology,
+	loadCountryFeatures,
+	type CountriesTopology,
+} from './load-countries.js';
 import { buildFeatureLabel, ChoroplethLayer } from './scene/choropleth-layer.js';
 import { GlobeScene } from './scene/globe-scene.js';
 import { renderLegend } from './ui/legend-view.js';
@@ -34,6 +38,30 @@ import { globeChartStyles } from './ui/styles/index.js';
 import { renderToasts } from './ui/toast-view.js';
 import { yieldToMain } from './yield-main.js';
 
+/**
+ * Country choropleths on an interactive 3D globe.
+ *
+ * @fires {CustomEvent<undefined>} ready - Globe scene created and country polygons painted for the first time.
+ * @fires {CustomEvent<CountryEventDetail>} country-select - A country was chosen via a legend row or polygon click.
+ * @fires {CustomEvent<CountryEventDetail>} country-hover - The pointer moved onto a different country polygon.
+ * @fires {CustomEvent<LegendSearchEventDetail>} legend-search - Legend search ran in `remote`/`hybrid` mode; detail carries the query and an AbortSignal.
+ * @fires {CustomEvent<FeedbackEventDetail>} error - Fatal problem (WebGL init, map asset load). Mirrors the error toast.
+ * @fires {CustomEvent<FeedbackEventDetail>} warning - Recoverable problem (skipped rows, invalid config). Mirrors the warning toast.
+ *
+ * @cssprop --globe-chart-ocean-color - Ocean / sphere fill color.
+ * @cssprop --globe-chart-empty-color - Fill for countries without data.
+ * @cssprop --globe-chart-low-color - Low end of the value color scale.
+ * @cssprop --globe-chart-high-color - High end of the value color scale.
+ * @cssprop --globe-chart-land-color - Alias for `--globe-chart-high-color`.
+ * @cssprop --globe-chart-border-color - Country border stroke color.
+ * @cssprop --globe-chart-legend-bg - Legend / toast panel background.
+ * @cssprop --globe-chart-legend-fg - Legend / toast text color.
+ * @cssprop --globe-chart-legend-muted - Secondary legend text color.
+ * @cssprop --globe-chart-tooltip-bg - Tooltip background.
+ * @cssprop --globe-chart-tooltip-fg - Tooltip text color.
+ * @cssprop --globe-chart-tooltip-accent - Tooltip accent / border color.
+ * @cssprop --globe-chart-legend-max-height - Max height of the legend panel.
+ */
 @customElement('globe-chart')
 export class GlobeChart extends LitElement {
 	static override styles = globeChartStyles;
@@ -96,6 +124,15 @@ export class GlobeChart extends LitElement {
 	config: GlobeChartConfigInput = {};
 
 	/**
+	 * Host-supplied country polygons: GeoJSON features or a countries TopoJSON
+	 * topology. When `null` (default) the packaged asset is fetched (or
+	 * `config.globe.topologyUrl` when set). Lets bundler-hostile setups skip
+	 * the asset-copy step entirely.
+	 */
+	@property({ attribute: false })
+	countries: GeoFeature[] | CountriesTopology | null = null;
+
+	/**
 	 * Host-driven remote search results (ISO hits). When non-null in `remote` /
 	 * `hybrid` mode, these feed the legend list (joined with map values/colors).
 	 * Set to `null` to clear and fall back to provider / local filtering.
@@ -115,6 +152,8 @@ export class GlobeChart extends LitElement {
 	private createGeneration = 0;
 	private hasCentered = false;
 	private loadingViewReady = false;
+	private polygonHoverBound = false;
+	private lastHoverIso: string | null = null;
 	/** First choropleth paint uses 0ms transitions to avoid a multi-hundred-ms long task. */
 	private hasPaintedPolygons = false;
 	private polygonClickBound = false;
@@ -241,6 +280,11 @@ export class GlobeChart extends LitElement {
 			this.legendController.setPage(1);
 		}
 
+		if (changed.has('countries') && this.scene.globe) {
+			void this.syncCountries();
+			return;
+		}
+
 		if (!this.scene.globe) {
 			if (!this.globeCreating && this.visibilityController.visible) void this.createGlobe();
 			return;
@@ -320,6 +364,8 @@ export class GlobeChart extends LitElement {
 	}
 
 	private syncLegendMaxHeight() {
+		// SSR: the DOM shim has no CSSStyleDeclaration; the browser pass re-runs this.
+		if (typeof this.style?.setProperty !== 'function') return;
 		const maxHeight = this.resolvedConfig.legend.maxHeight?.trim();
 		if (maxHeight) {
 			this.style.setProperty('--globe-chart-legend-max-height', maxHeight);
@@ -346,7 +392,7 @@ export class GlobeChart extends LitElement {
 					config: this.resolvedConfig,
 					motionMs: (ms, kind) => this.motionMs(ms, kind),
 				}),
-				loadCountryFeatures(),
+				this.resolveCountries(),
 			]);
 
 			// Aborted: this instance was torn down mid-init.
@@ -400,6 +446,50 @@ export class GlobeChart extends LitElement {
 			);
 		} finally {
 			if (generation === this.createGeneration) this.globeCreating = false;
+		}
+	}
+
+	/** Features from the `countries` property, or `null` when unset. */
+	private providedCountries(): GeoFeature[] | null {
+		if (this.countries == null) return null;
+		if (Array.isArray(this.countries)) return this.countries.filter(isGeoFeature);
+		return featuresFromTopology(this.countries);
+	}
+
+	private async resolveCountries(): Promise<GeoFeature[]> {
+		const provided = this.providedCountries();
+		if (provided) return provided;
+		return loadCountryFeatures(this.resolvedConfig.globe.topologyUrl || undefined);
+	}
+
+	/** React to `countries` property changes after the globe exists. */
+	private async syncCountries() {
+		const provided = this.providedCountries();
+		if (provided) {
+			this.countryFeatures = provided;
+			this.applyVisual(false);
+			return;
+		}
+		const generation = this.createGeneration;
+		try {
+			const features = await loadCountryFeatures(
+				this.resolvedConfig.globe.topologyUrl || undefined,
+			);
+			if (generation !== this.createGeneration || !this.isConnected) return;
+			this.countryFeatures = features;
+			this.applyVisual(false);
+		} catch (err) {
+			if (generation !== this.createGeneration || !this.isConnected) return;
+			this.toastController.notify(
+				{
+					level: 'error',
+					title: 'Map data missing',
+					body: 'Country polygons failed to load. Check the topology URL and try again.',
+					details: err instanceof Error ? err.message : String(err),
+					code: 'geojson-empty',
+				},
+				this.resolvedConfig.toasts,
+			);
 		}
 	}
 
@@ -469,6 +559,11 @@ export class GlobeChart extends LitElement {
 			globe.onPolygonClick((poly) => this.handlePolygonClick(poly));
 		}
 
+		if (!this.polygonHoverBound) {
+			this.polygonHoverBound = true;
+			globe.onPolygonHover((poly) => this.handlePolygonHover(poly));
+		}
+
 		this.scene.syncRotation({
 			loading: isLoading,
 			autoRotate: this.autoRotate,
@@ -534,15 +629,32 @@ export class GlobeChart extends LitElement {
 		const flyMs = this.motionMs(this.resolvedConfig.camera.durations.navigate, 'camera');
 		this.pinLabelTimer = setTimeout(() => this.layer.pinLabel(null), flyMs + 300);
 
+		const entry = this.entryFromFeature(feature, iso);
+		if (entry) this.legendController.select(entry);
+	}
+
+	private handlePolygonHover(poly: object | null) {
+		if (this.loading) return;
+		const feature = poly != null && isGeoFeature(poly) ? poly : null;
+		const iso = feature ? isoOf(feature) : '';
+		const nextIso = iso || null;
+		if (nextIso === this.lastHoverIso) return;
+		this.lastHoverIso = nextIso;
+		if (!feature || !nextIso) return;
+		const entry = this.entryFromFeature(feature, nextIso);
+		if (entry) this.emitCountry('country-hover', entry);
+	}
+
+	/** Legend entry for a picked polygon; falls back to a zero-value entry for no-data countries. */
+	private entryFromFeature(feature: GeoFeature, iso: string): LegendEntry | null {
 		const fromLegend = this.currentLegendEntries().find((e) => e.iso === iso);
-		if (fromLegend) {
-			this.legendController.select(fromLegend);
-			return;
-		}
+		if (fromLegend) return fromLegend;
 		const center = boundingBoxCenter(feature.geometry);
-		if (!center) return;
+		if (!center) return null;
+		const index = this.computeIndex();
+		const colors = this.themeController.resolve(this.resolvedConfig.colors);
 		const value = index.valueMap[iso] ?? 0;
-		const entry: LegendEntry = {
+		return {
 			iso,
 			name: featureName(feature, iso),
 			value,
@@ -551,7 +663,6 @@ export class GlobeChart extends LitElement {
 			lng: center.lng,
 			...definedProps({ row: index.rowByIso[iso] }),
 		};
-		this.legendController.select(entry);
 	}
 
 	private reportDataFeedback(

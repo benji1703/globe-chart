@@ -122,6 +122,12 @@ export interface GlobeVisualConfig {
 	maxPixelRatio: number;
 	/** Pause the render loop while the element is off-screen. Default true. */
 	pauseWhenHidden: boolean;
+	/**
+	 * URL of the countries TopoJSON asset. Empty string (default) resolves the
+	 * packaged file beside the built module. Set this when your bundler/CDN
+	 * hosts the asset elsewhere (e.g. `/assets/ne_110m_admin_0_countries.json`).
+	 */
+	topologyUrl: string;
 }
 
 export interface ToastsConfig {
@@ -203,6 +209,7 @@ export const DEFAULT_CONFIG = {
 		allowContextMenu: true,
 		maxPixelRatio: 1,
 		pauseWhenHidden: true,
+		topologyUrl: '',
 	},
 	toasts: {
 		enabled: true,
@@ -432,6 +439,12 @@ function assignGlobe(
 	}
 	for (const key of ['allowContextMenu', 'pauseWhenHidden'] as const) {
 		if (next[key] !== undefined && typeof next[key] !== 'boolean') {
+			invalidPaths.push(`globe.${key}`);
+			delete next[key];
+		}
+	}
+	for (const key of ['strokeColor', 'topologyUrl'] as const) {
+		if (next[key] !== undefined && typeof next[key] !== 'string') {
 			invalidPaths.push(`globe.${key}`);
 			delete next[key];
 		}

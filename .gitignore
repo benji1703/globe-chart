@@ -5,3 +5,5 @@ storybook-static/
 *.log
 .DS_Store
 .superpowers/
+custom-elements.json
+.omc/

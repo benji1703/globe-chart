@@ -1,6 +1,6 @@
 {
 	"name": "globe-chart",
-	"version": "0.2.7",
+	"version": "0.3.0",
 	"description": "Framework-agnostic <globe-chart> web component for country polygon choropleths on a 3D globe.",
 	"license": "MIT",
 	"type": "module",
@@ -28,31 +28,40 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/globe-chart.js"
+			"import": "./dist/globe-chart.js",
+			"default": "./dist/globe-chart.js"
+		},
+		"./react": {
+			"types": "./dist/react.d.ts",
+			"import": "./dist/react.js",
+			"default": "./dist/react.js"
 		},
 		"./stubs/*": "./stubs/*"
 	},
 	"files": [
 		"dist",
 		"stubs",
+		"custom-elements.json",
 		"LICENSE",
 		"COMMERCIAL.md",
 		"NOTICE",
 		"README.md"
 	],
+	"customElements": "custom-elements.json",
 	"publishConfig": {
 		"access": "public",
 		"provenance": true
 	},
 	"sideEffects": [
-		"./dist/globe-chart.js",
+		"./dist/*.js",
 		"./src/globe-chart.ts",
 		"./src/globe-chart.js"
 	],
 	"scripts": {
 		"dev": "storybook dev -p 6006",
 		"dev:demo": "vite --config demo/vite.config.ts",
-		"build": "vite build && tsc -p tsconfig.json --emitDeclarationOnly && cp src/data/ne_110m_admin_0_countries.json dist/ne_110m_admin_0_countries.json",
+		"analyze": "cem analyze",
+		"build": "npm run analyze && vite build && tsc -p tsconfig.json --emitDeclarationOnly && cp src/data/ne_110m_admin_0_countries.json dist/ne_110m_admin_0_countries.json",
 		"build:demo": "vite build --config demo/vite.config.ts",
 		"build:storybook": "storybook build",
 		"test": "vitest run",
@@ -62,23 +71,35 @@
 		"prepublishOnly": "npm test && npm run typecheck && npm run build"
 	},
 	"dependencies": {
+		"@lit/react": "^1.0.8",
 		"globe.gl": "2.46.1",
 		"lit": "^3.3.3",
 		"three": "^0.185.1",
 		"topojson-client": "^3.1.0"
 	},
 	"devDependencies": {
+		"@custom-elements-manifest/analyzer": "^0.11.0",
 		"@storybook/web-components": "^10.4.6",
 		"@storybook/web-components-vite": "^10.4.6",
 		"@types/node": "^26.1.1",
+		"@types/react": "^19.2.17",
 		"@types/three": "^0.185.1",
 		"@types/topojson-client": "^3.1.5",
 		"@types/topojson-specification": "^1.0.5",
 		"jsdom": "^29.1.1",
+		"react": "^19.2.7",
 		"storybook": "^10.4.6",
 		"topojson-server": "^3.0.1",
 		"typescript": "^7.0.2",
 		"vite": "^8.1.4",
 		"vitest": "^4.1.10"
+	},
+	"peerDependencies": {
+		"react": ">=17"
+	},
+	"peerDependenciesMeta": {
+		"react": {
+			"optional": true
+		}
 	}
 }

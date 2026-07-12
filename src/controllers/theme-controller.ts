@@ -3,6 +3,18 @@ import type { ReactiveController, ReactiveControllerHost } from 'lit';
 import type { ColorsConfig } from '../core/config.js';
 import type { ThemeColors } from '../core/types.js';
 
+/** Light-theme fallbacks, used when CSS custom properties are not resolvable (SSR). */
+const FALLBACK = {
+	ocean: '#c8e0f5',
+	empty: '#eef6fc',
+	low: '#f5c518',
+	high: '#c41e1e',
+	border: 'rgba(30, 55, 85, 0.4)',
+	legendBg: 'rgba(255,255,255,0.94)',
+	legendFg: '#121826',
+	legendMuted: '#5c6b7a',
+} satisfies ThemeColors;
+
 /** Resolves choropleth theme colors from config + CSS custom properties, and tracks OS theme changes. */
 export class ThemeController implements ReactiveController {
 	private mq: MediaQueryList | undefined;
@@ -29,26 +41,35 @@ export class ThemeController implements ReactiveController {
 	}
 
 	resolve(config: ColorsConfig): ThemeColors {
+		// SSR (Lit server render): no computed styles — config wins, then light-theme defaults.
+		if (typeof getComputedStyle !== 'function') {
+			return {
+				...FALLBACK,
+				...(config.ocean ? { ocean: config.ocean } : null),
+				...(config.empty ? { empty: config.empty } : null),
+				...(config.low ? { low: config.low } : null),
+				...(config.high ? { high: config.high } : null),
+			};
+		}
+
 		const style = getComputedStyle(this.host);
 		const read = (name: string) => style.getPropertyValue(name).trim();
-		const low =
-			config.low || read('--globe-chart-low-color') || read('--globe-chart-risk-low-color') || '#f5c518';
+		const low = config.low || read('--globe-chart-low-color') || FALLBACK.low;
 		const high =
 			config.high ||
 			read('--globe-chart-high-color') ||
-			read('--globe-chart-risk-high-color') ||
 			read('--globe-chart-land-color') ||
-			'#c41e1e';
+			FALLBACK.high;
 
 		return {
-			ocean: config.ocean || read('--globe-chart-ocean-color') || '#c8e0f5',
-			empty: config.empty || read('--globe-chart-empty-color') || '#eef6fc',
+			ocean: config.ocean || read('--globe-chart-ocean-color') || FALLBACK.ocean,
+			empty: config.empty || read('--globe-chart-empty-color') || FALLBACK.empty,
 			low,
 			high,
-			border: read('--globe-chart-border-color') || 'rgba(30, 55, 85, 0.4)',
-			legendBg: read('--globe-chart-legend-bg') || 'rgba(255,255,255,0.94)',
-			legendFg: read('--globe-chart-legend-fg') || '#121826',
-			legendMuted: read('--globe-chart-legend-muted') || '#5c6b7a',
+			border: read('--globe-chart-border-color') || FALLBACK.border,
+			legendBg: read('--globe-chart-legend-bg') || FALLBACK.legendBg,
+			legendFg: read('--globe-chart-legend-fg') || FALLBACK.legendFg,
+			legendMuted: read('--globe-chart-legend-muted') || FALLBACK.legendMuted,
 		};
 	}
 }

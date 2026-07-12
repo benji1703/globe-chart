@@ -67,9 +67,13 @@ function countriesJsonUrl(): string {
 	return new URL(dir + file, import.meta.url).href;
 }
 
-/** Load packaged TopoJSON via fetch (raw JSON asset). */
-export async function loadCountryFeatures(): Promise<GeoFeature[]> {
-	const res = await fetch(countriesJsonUrl());
+/**
+ * Load countries TopoJSON via fetch. With no argument the packaged asset is
+ * resolved beside the built module; pass `url` to load from a custom location
+ * (see `config.globe.topologyUrl`).
+ */
+export async function loadCountryFeatures(url?: string): Promise<GeoFeature[]> {
+	const res = await fetch(url || countriesJsonUrl());
 	if (!res.ok) {
 		throw new Error(`Country map asset failed to load (${res.status})`);
 	}

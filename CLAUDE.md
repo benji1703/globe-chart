@@ -27,6 +27,10 @@ Pages (https://benji1703.github.io/globe-chart/) on every push to `main`.
   parts ON PURPOSE so Vite neither inlines a data: URL nor emits a duplicate
   hashed asset. Countries JSON must sit beside the emitted JS (dist/,
   demo/dist/assets/, storybook-static/assets/ — each build has a copy step).
+  Consumers can bypass all of this: `config.globe.topologyUrl` (custom URL) or
+  the `countries` property (pre-loaded features/topology).
+- `react.ts` — `globe-chart/react` subpath: `@lit/react` createComponent with
+  typed event callbacks. `react` is an optional peerDependency.
 - `stubs/` (repo root, published as `globe-chart/stubs/*`) — build-time
   stand-ins for `three/webgpu`, `three/tsl`, `h3-js`.
 
@@ -60,7 +64,12 @@ dead weight for this component.
    `modulepreload` for the globe.gl/three.core/globe-chart chunks and a
    `preload as=fetch` for the countries JSON into demo/dist/index.html. Don't
    add static preload links to demo/index.html source — hashes change.
-5. **Headless Chrome visual checks need a real GPU backend**:
+5. **Don't use lit's `isServer` for SSR guards** — vitest (and consumers' test
+   setups) resolve lit through the `node` export condition, so `isServer` is
+   `true` under jsdom tests and silently disables the guarded code. Use
+   capability checks instead (`typeof getComputedStyle !== 'function'`,
+   `typeof this.style?.setProperty !== 'function'`).
+6. **Headless Chrome visual checks need a real GPU backend**:
    `--use-angle=metal`. SwiftShader renders an empty globe canvas even on
    known-good builds. Repro pattern for remount bugs: puppeteer-core +
    system Chrome against the storybook manager, click sidebar story links
@@ -79,9 +88,19 @@ Repo owner GitHub identity: benji1703 (gh CLI). Never commit `.omc/` or
 
 ## Publishing contract
 
-- Library externalizes `lit`, `globe.gl`, `three`, `topojson-client`
-  (vite.config.ts rollup externals) — consumers bundle them.
-- `package.json` `files`: dist, stubs, LICENSE, COMMERCIAL.md, NOTICE, README.
-- Exports: `.` (dist/globe-chart.js + types) and `./stubs/*`.
+- Library externalizes `lit`, `globe.gl`, `three`, `topojson-client`, `react`,
+  `@lit/react` (vite.config.ts rollup externals) — consumers bundle them.
+- Build is multi-entry (`globe-chart` + `react`); shared code lands in
+  `dist/globe-chart-internal.js` (chunkFileNames pinned, NO subdir/hash — the
+  countries JSON is fetched relative to the chunk containing load-countries).
+  `sideEffects` uses `./dist/*.js` so bundlers never prune the
+  `customElements.define` chunk.
+- `npm run build` first runs `cem analyze` → `custom-elements.json` (published,
+  gitignored; `customElements` field in package.json). Keep the JSDoc
+  `@fires`/`@cssprop` block on the GlobeChart class in sync with reality —
+  that's the manifest source.
+- `package.json` `files`: dist, stubs, custom-elements.json, LICENSE,
+  COMMERCIAL.md, NOTICE, README.
+- Exports: `.` (dist/globe-chart.js + types), `./react`, and `./stubs/*`.
 - Public API surface is deliberately small (index.ts) — don't re-export
   internal utilities.

@@ -36,6 +36,8 @@ class FakeGlobe {
 	};
 	lastPointOfView: unknown;
 	paused = false;
+	polygons: unknown[] = [];
+	hoverHandler: ((poly: object | null) => void) | undefined;
 
 	width() {
 		return this;
@@ -43,7 +45,8 @@ class FakeGlobe {
 	height() {
 		return this;
 	}
-	polygonsData() {
+	polygonsData(data?: unknown[]) {
+		if (data) this.polygons = data;
 		return this;
 	}
 	polygonsTransitionDuration() {
@@ -83,6 +86,10 @@ class FakeGlobe {
 		return this;
 	}
 	onPolygonClick() {
+		return this;
+	}
+	onPolygonHover(handler: (poly: object | null) => void) {
+		this.hoverHandler = handler;
 		return this;
 	}
 	enablePointerInteraction() {
@@ -126,8 +133,9 @@ class FakeGlobe {
 
 vi.mock('globe.gl', () => ({ default: FakeGlobe }));
 
-vi.mock('./load-countries', () => ({
-	loadCountryFeatures: async () => [
+vi.mock('./load-countries', async (importOriginal) => ({
+	...(await importOriginal<typeof import('./load-countries.js')>()),
+	loadCountryFeatures: vi.fn(async () => [
 		{
 			type: 'Feature',
 			properties: { i: 'US', n: 'United States' },
@@ -178,10 +186,11 @@ vi.mock('./load-countries', () => ({
 				],
 			},
 		},
-	],
+	]),
 }));
 
 const { globeChartMockData } = await import('./globe-chart.mock-data.js');
+const { loadCountryFeatures } = await import('./load-countries.js');
 await import('./globe-chart.js');
 
 async function mountGlobe(
@@ -319,6 +328,86 @@ describe('globe-chart', () => {
 
 		const globe = (el as unknown as { scene: { globe: FakeGlobe } }).scene.globe;
 		expect(globe.lastPointOfView).toMatchObject({ lat: expect.any(Number), lng: expect.any(Number) });
+		el.remove();
+	});
+
+	it('prefers host-supplied countries over the packaged asset', async () => {
+		const before = vi.mocked(loadCountryFeatures).mock.calls.length;
+		const el = document.createElement('globe-chart');
+		el.countries = [
+			{
+				type: 'Feature',
+				properties: { i: 'JP', n: 'Japan' },
+				geometry: {
+					type: 'Polygon',
+					coordinates: [
+						[
+							[130, 31],
+							[142, 31],
+							[142, 45],
+							[130, 45],
+							[130, 31],
+						],
+					],
+				},
+			},
+		];
+		el.data = [{ iso: 'JP', value: 5 }];
+		el.showLegend = true;
+		document.body.appendChild(el);
+		await vi.waitFor(() => {
+			const names = [...(el.shadowRoot?.querySelectorAll('.legend-name') ?? [])].map(
+				(n) => n.textContent,
+			);
+			expect(names).toEqual(['Japan']);
+		});
+		expect(vi.mocked(loadCountryFeatures).mock.calls.length).toBe(before);
+		el.remove();
+	});
+
+	it('passes config.globe.topologyUrl to the countries loader', async () => {
+		const el = document.createElement('globe-chart');
+		el.config = { globe: { topologyUrl: 'https://cdn.example/countries.json' } };
+		el.data = [{ iso: 'US', value: 10 }];
+		document.body.appendChild(el);
+		await vi.waitFor(() => {
+			expect(vi.mocked(loadCountryFeatures)).toHaveBeenCalledWith(
+				'https://cdn.example/countries.json',
+			);
+		});
+		el.remove();
+	});
+
+	it('emits country-hover once per country under the pointer', async () => {
+		const el = await mountGlobe({
+			data: [
+				{ iso: 'US', value: 1200 },
+				{ iso: 'FR', value: 280 },
+			],
+		});
+		await vi.waitFor(() => {
+			const scene = (el as unknown as { scene: { globe: FakeGlobe | null } }).scene;
+			expect(scene.globe?.hoverHandler).toBeTypeOf('function');
+		});
+		const globe = (el as unknown as { scene: { globe: FakeGlobe } }).scene.globe;
+
+		const hovered: string[] = [];
+		el.addEventListener('country-hover', (ev) => hovered.push(ev.detail.iso));
+
+		const us = globe.polygons.find(
+			(p) => (p as { properties: { i: string } }).properties.i === 'US',
+		) as object;
+		const fr = globe.polygons.find(
+			(p) => (p as { properties: { i: string } }).properties.i === 'FR',
+		) as object;
+
+		globe.hoverHandler?.(us);
+		globe.hoverHandler?.(us); // same country again — no duplicate event
+		globe.hoverHandler?.(fr);
+		globe.hoverHandler?.(null); // pointer leaves land
+		globe.hoverHandler?.(us); // re-enter fires again
+
+		expect(hovered).toEqual(['US', 'FR', 'US']);
 		el.remove();
 	});
 

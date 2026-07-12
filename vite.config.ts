@@ -5,9 +5,11 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
 	build: {
 		lib: {
-			entry: resolve(__dirname, 'src/index.ts'),
+			entry: {
+				'globe-chart': resolve(__dirname, 'src/index.ts'),
+				react: resolve(__dirname, 'src/react.ts'),
+			},
 			formats: ['es'],
-			fileName: 'globe-chart',
 		},
 		assetsInlineLimit: (filePath: string) => {
 			// Never data-URL the country topology — keep a real fetchable asset.
@@ -22,9 +24,15 @@ export default defineConfig({
 				'globe.gl',
 				'three',
 				'topojson-client',
+				'react',
+				/^react\//,
+				'@lit/react',
 			],
 			output: {
 				assetFileNames: '[name][extname]',
+				// Shared chunk stays in dist/ root (no hash, no subdir) — the countries
+				// JSON is resolved relative to the chunk that contains load-countries.
+				chunkFileNames: '[name]-internal.js',
 			},
 		},
 	},

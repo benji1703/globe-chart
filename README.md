@@ -91,6 +91,7 @@ document.body.append(el);
 | Property            | Attribute            | Default   | Description                                      |
 | ------------------- | -------------------- | --------- | ------------------------------------------------ |
 | `data`              | —                    | `[]`      | Rows to plot                                     |
+| `countries`         | —                    | `null`    | Host-supplied country polygons (GeoJSON features or TopoJSON) — skips the packaged asset fetch |
 | `isoField`          | `iso-field`          | `'iso'`   | ISO country code field                           |
 | `valueField`        | `value-field`        | `'value'` | Numeric value field                              |
 | `nameField`         | `name-field`         | `'name'`  | Optional display name field on rows              |
@@ -134,7 +135,7 @@ el.config = {
 	colors: { ocean, empty, low, high, stroke },
 	labels: { tooltip: ({ iso, name, value, color, row }) => htmlString },
 	camera: { initial, jumpAltitude, durations },
-	globe: { atmosphereAltitude, strokeColor, curvatureDeg },
+	globe: { atmosphereAltitude, strokeColor, curvatureDeg, topologyUrl, maxPixelRatio, pauseWhenHidden },
 	toasts: { enabled, position, maxVisible, persistWarnings },
 };
 ```
@@ -153,9 +154,15 @@ For event-driven backends (no `provider`), listen for `legend-search` and set
 | ---------------- | ------------------------------------------- |
 | `ready`          | —                                           |
 | `country-select` | `{ iso, name, value, color… }`              |
+| `country-hover`  | `{ iso, name, value, color… }` (fires once per country under the pointer) |
 | `legend-search`  | `{ query, signal }` (remote/hybrid search)  |
 | `error`          | `{ title, body, details… }`                 |
 | `warning`        | `{ title, body, details… }`                 |
+
+All events are `CustomEvent`s that bubble and cross the shadow boundary. In
+TypeScript, `addEventListener` on a `GlobeChart` element is fully typed via
+`GlobeChartEventMap` — `document.querySelector('globe-chart')` already returns
+the right type through `HTMLElementTagNameMap`.
 
 ### Theming
 
@@ -166,7 +173,7 @@ CSS custom properties on the host:
 
 - `--globe-chart-ocean-color` / `--globe-chart-empty-color`
 - `--globe-chart-low-color` / `--globe-chart-high-color`
-- `--globe-chart-risk-low-color` / `--globe-chart-risk-high-color` / `--globe-chart-land-color` (aliases)
+- `--globe-chart-land-color` (alias for `--globe-chart-high-color`)
 - `--globe-chart-border-color`
 - `--globe-chart-legend-bg` / `--globe-chart-legend-fg` / `--globe-chart-legend-muted`
 - `--globe-chart-legend-max-height` (or `config.legend.maxHeight`)
@@ -177,6 +184,152 @@ CSS custom properties on the host:
 Problems surface as in-component toasts (skipped rows, init failures, empty data)
 and matching `error` / `warning` DOM events. Disable UI with
 `config.toasts.enabled = false` if the host app handles events only.
+
+### Countries map asset
+
+The component fetches its Natural Earth TopoJSON at runtime. By default the
+file is resolved **beside the built module**, which works out of the box with
+Vite, webpack, and most bundlers (they copy `dist/ne_110m_admin_0_countries.json`
+along with the JS). If your setup serves assets elsewhere, you have two overrides:
+
+```ts
+// 1. Point at a hosted copy (CDN, /assets, …)
+el.config = { globe: { topologyUrl: '/assets/ne_110m_admin_0_countries.json' } };
+
+// 2. Skip the fetch entirely — supply polygons yourself
+import { loadCountryFeatures } from 'globe-chart';
+el.countries = await loadCountryFeatures('/assets/ne_110m_admin_0_countries.json');
+// or pass a TopoJSON topology / your own GeoJSON features directly
+```
+
+`loadCountryFeatures` and `featuresFromTopology` are exported for hosts that
+want to fetch/preload the asset themselves (e.g. Angular `provideAppInitializer`,
+a `<link rel="preload" as="fetch">`, or a bundler `?url` import).
+
+## Framework integration
+
+`<globe-chart>` is a standard custom element — every framework below binds the
+same properties and events. The package ships
+[`custom-elements.json`](https://github.com/webcomponents/custom-elements-manifest),
+so VS Code / JetBrains give autocomplete and hover docs for attributes, events,
+and CSS custom properties.
+
+### React
+
+React 18 and below (or anyone preferring idiomatic props/callbacks): use the
+bundled wrapper — typed props, typed event callbacks:
+
+```tsx
+import { GlobeChart } from 'globe-chart/react';
+
+export function WorldMap({ rows }: { rows: { iso: string; value: number }[] }) {
+	return (
+		<GlobeChart
+			data={rows}
+			showLegend
+			theme="dark"
+			onCountrySelect={(e) => console.log(e.detail.iso, e.detail.value)}
+			style={{ width: '100%', height: 480 }}
+		/>
+	);
+}
+```
+
+React 19+ can also use `<globe-chart>` directly (properties and events are
+handled natively); the wrapper still gives you typed `onCountrySelect`-style
+callbacks either way.
+
+### Angular
+
+Standalone component, signals, template bindings — no `ViewChild` or lifecycle
+hooks needed. Angular's `[prop]` binding sets element **properties**, which is
+exactly what the component expects:
+
+```ts
+import { Component, CUSTOM_ELEMENTS_SCHEMA, signal } from '@angular/core';
+import type { CountryEventDetail } from 'globe-chart';
+import 'globe-chart';
+
+@Component({
+	selector: 'app-world-map',
+	standalone: true,
+	schemas: [CUSTOM_ELEMENTS_SCHEMA],
+	template: `
+		<globe-chart
+			[data]="rows()"
+			[config]="config"
+			legend
+			theme="dark"
+			(country-select)="onSelect($event)"
+		></globe-chart>
+	`,
+})
+export class WorldMapComponent {
+	readonly rows = signal([
+		{ iso: 'US', value: 1200 },
+		{ iso: 'FR', value: 280 },
+	]);
+	readonly config = { legend: { title: 'Revenue by country' } };
+
+	onSelect(event: Event) {
+		const { iso, value } = (event as CustomEvent<CountryEventDetail>).detail;
+		console.log(iso, value);
+	}
+}
+```
+
+No `angular.json` asset config is required with the default setup — but if your
+build relocates assets, use `config.globe.topologyUrl` (see “Countries map
+asset” above) instead of copying files around.
+
+### Vue 3
+
+Tell the compiler about the tag, then bind normally (`.prop` forces property
+binding for complex values):
+
+```ts
+// vite.config.ts
+vue({ template: { compilerOptions: { isCustomElement: (tag) => tag === 'globe-chart' } } });
+```
+
+```vue
+<script setup lang="ts">
+import 'globe-chart';
+import type { CountryEventDetail } from 'globe-chart';
+
+const rows = [{ iso: 'US', value: 1200 }, { iso: 'FR', value: 280 }];
+const onSelect = (e: CustomEvent<CountryEventDetail>) => console.log(e.detail.iso);
+</script>
+
+<template>
+	<globe-chart :data.prop="rows" legend theme="dark" @country-select="onSelect" />
+</template>
+```
+
+### Svelte
+
+Svelte supports custom elements out of the box:
+
+```svelte
+<script lang="ts">
+	import 'globe-chart';
+	const rows = [{ iso: 'US', value: 1200 }, { iso: 'FR', value: 280 }];
+</script>
+
+<globe-chart data={rows} legend on:country-select={(e) => console.log(e.detail.iso)} />
+```
+
+### SSR (Angular Universal, Next.js, Nuxt…)
+
+The component guards its DOM/CSS reads, and WebGL setup is deferred until the
+element is actually visible in a browser, so importing it during SSR does not
+crash. Still, the globe is inherently client-side — load it in a client-only
+context for best results:
+
+- **Angular**: import `'globe-chart'` in the component file; render the tag
+  inside `@defer` or guard with `afterNextRender` if you SSR the page.
+- **Next.js**: `dynamic(() => import('globe-chart/react').then(m => m.GlobeChart), { ssr: false })`.
+- **Nuxt**: wrap in `<ClientOnly>`.
 
 ## Framework demos
 

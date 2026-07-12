@@ -28,8 +28,6 @@ export const lightTokens = css`
 	--globe-chart-empty-color: #eef6fc;
 	--globe-chart-low-color: #f5c518;
 	--globe-chart-high-color: #c41e1e;
-	--globe-chart-risk-low-color: var(--globe-chart-low-color);
-	--globe-chart-risk-high-color: var(--globe-chart-high-color);
 	--globe-chart-land-color: var(--globe-chart-high-color);
 	--globe-chart-border-color: rgba(30, 55, 85, 0.4);
 	--globe-chart-legend-bg: rgba(255, 255, 255, 0.94);
@@ -47,8 +45,6 @@ export const darkTokens = css`
 	--globe-chart-empty-color: #16324a;
 	--globe-chart-low-color: #f5d04a;
 	--globe-chart-high-color: #ff4d4d;
-	--globe-chart-risk-low-color: var(--globe-chart-low-color);
-	--globe-chart-risk-high-color: var(--globe-chart-high-color);
 	--globe-chart-land-color: var(--globe-chart-high-color);
 	--globe-chart-border-color: rgba(160, 200, 240, 0.35);
 	--globe-chart-legend-bg: rgba(8, 16, 28, 0.94);
