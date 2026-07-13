@@ -1,4 +1,3 @@
-import { copyFileSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -33,22 +32,6 @@ const config: StorybookConfig = {
 			'three/tsl': resolve(repoRoot, 'stubs/three-tsl.js'),
 			'h3-js': resolve(repoRoot, 'stubs/h3-js.js'),
 		};
-		// Static storybook builds fetch the country topology beside the built
-		// chunks (same contract as dist/ and demo/dist/assets/) — copy it there.
-		viteConfig.plugins = [
-			...(viteConfig.plugins ?? []),
-			{
-				name: 'copy-countries-topojson',
-				closeBundle() {
-					const outDir = resolve(repoRoot, 'storybook-static/assets');
-					mkdirSync(outDir, { recursive: true });
-					copyFileSync(
-						resolve(repoRoot, 'src/data/ne_110m_admin_0_countries.json'),
-						resolve(outDir, 'ne_110m_admin_0_countries.json'),
-					);
-				},
-			},
-		];
 		return viteConfig;
 	},
 };

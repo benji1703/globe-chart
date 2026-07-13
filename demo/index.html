@@ -74,6 +74,7 @@
 					<a href="#demo">Demo</a>
 					<a href="#features">Features</a>
 					<a href="#install">Install</a>
+					<a href="#frameworks">Frameworks</a>
 					<a href="#api">API</a>
 					<a href="https://github.com/benji1703/globe-chart" rel="noopener">GitHub</a>
 					<a href="https://www.npmjs.com/package/globe-chart" rel="noopener">npm</a>
@@ -201,7 +202,7 @@
 					</article>
 					<article class="feature">
 						<h3>Feedback toasts</h3>
-						<p>Skipped rows and init failures surface as in-component toasts and <code>error</code> / <code>warning</code> events.</p>
+						<p>Skipped rows and init failures surface as in-component toasts and <code>globe-error</code> / <code>globe-warning</code> events.</p>
 					</article>
 					<article class="feature">
 						<h3>Configurable</h3>
@@ -220,13 +221,57 @@
 				<p class="doc-note">
 					Published on
 					<a href="https://www.npmjs.com/package/globe-chart" rel="noopener">npm</a>.
-					<code>lit</code>, <code>globe.gl</code>, and <code>three</code> install as
-					dependencies of this package — you only need the one command. They stay external
-					to the published bundle so your app does not double-ship WebGL stacks.
+					One command, zero configuration: <code>lit</code>, <code>globe.gl</code>, and
+					<code>three</code> install as dependencies, and the country map ships inside the
+					package as a lazily code-split module — no asset copying, no loader plugins, no
+					CDN fetch. Everything stays external to the published bundle so your app does not
+					double-ship WebGL stacks.
 				</p>
 
 				<h3>Quick start</h3>
 				<pre class="code"><code id="snippet"></code></pre>
+			</section>
+
+			<section class="docs" id="frameworks">
+				<h2>Framework demos</h2>
+				<p class="section-lede">
+					The same component, integrated idiomatically — each demo is a small open-source app
+					deployed from its own repo.
+				</p>
+				<div class="feature-grid">
+					<article class="feature">
+						<h3>React</h3>
+						<p>
+							Typed <code>globe-chart/react</code> wrapper with event callbacks.
+							<a href="https://benji1703.github.io/globe-chart-demo-react/" rel="noopener">Live demo</a> ·
+							<a href="https://github.com/benji1703/globe-chart-demo-react" rel="noopener">Source</a>
+						</p>
+					</article>
+					<article class="feature">
+						<h3>Angular</h3>
+						<p>
+							Signals, <code>OnPush</code>, and declarative <code>[prop]</code> bindings.
+							<a href="https://benji1703.github.io/globe-chart-demo-angular/" rel="noopener">Live demo</a> ·
+							<a href="https://github.com/benji1703/globe-chart-demo-angular" rel="noopener">Source</a>
+						</p>
+					</article>
+					<article class="feature">
+						<h3>Vue</h3>
+						<p>
+							<code>:data.prop</code> bindings and typed <code>@country-select</code> listeners.
+							<a href="https://benji1703.github.io/globe-chart-demo-vue/" rel="noopener">Live demo</a> ·
+							<a href="https://github.com/benji1703/globe-chart-demo-vue" rel="noopener">Source</a>
+						</p>
+					</article>
+					<article class="feature">
+						<h3>Svelte</h3>
+						<p>
+							Native custom-element property binding, no wrapper at all.
+							<a href="https://benji1703.github.io/globe-chart-demo-svelte/" rel="noopener">Live demo</a> ·
+							<a href="https://github.com/benji1703/globe-chart-demo-svelte" rel="noopener">Source</a>
+						</p>
+					</article>
+				</div>
 			</section>
 
 			<section class="docs" id="api">
@@ -303,9 +348,17 @@
 				<ul class="doc-list">
 					<li><code>ready</code> — globe initialized</li>
 					<li><code>country-select</code> — legend / polygon selection</li>
+					<li><code>country-hover</code> — pointer over a country (<code>detail: null</code> on leave)</li>
 					<li><code>legend-search</code> — remote/hybrid search request</li>
-					<li><code>error</code> / <code>warning</code> — feedback payload</li>
+					<li><code>globe-error</code> / <code>globe-warning</code> — feedback payload</li>
 				</ul>
+
+				<h3>Imperative API</h3>
+				<pre class="code"><code>el.select('FR');            // highlight + fly to France
+el.select(null);            // clear selection
+el.flyTo('JP');             // camera only, keeps selection
+el.flyTo({ lat: 48.8, lng: 2.3, altitude: 1.5 });
+el.selectedIso;             // current selection, or null</code></pre>
 
 				<h3>Theming</h3>
 				<p class="doc-note">

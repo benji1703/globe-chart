@@ -19,10 +19,12 @@ import { paginateItems } from './core/legend-query.js';
 import type {
 	CountryEventDetail,
 	DataRow,
+	FeedbackEventDetail,
 	GeoFeature,
 	GlobeChartEventMap,
 	LegendEntry,
 	LegendSearchEventDetail,
+	PointOfView,
 } from './core/types.js';
 import { definedProps, isGeoFeature } from './core/types.js';
 import { buildValueIndex, parseDataRows } from './core/value-index.js';
@@ -43,10 +45,10 @@ import { yieldToMain } from './yield-main.js';
  *
  * @fires {CustomEvent<undefined>} ready - Globe scene created and country polygons painted for the first time.
  * @fires {CustomEvent<CountryEventDetail>} country-select - A country was chosen via a legend row or polygon click.
- * @fires {CustomEvent<CountryEventDetail>} country-hover - The pointer moved onto a different country polygon.
+ * @fires {CustomEvent<CountryEventDetail | null>} country-hover - The pointer moved onto a different country polygon; `detail` is `null` when the pointer leaves the last hovered country.
  * @fires {CustomEvent<LegendSearchEventDetail>} legend-search - Legend search ran in `remote`/`hybrid` mode; detail carries the query and an AbortSignal.
- * @fires {CustomEvent<FeedbackEventDetail>} error - Fatal problem (WebGL init, map asset load). Mirrors the error toast.
- * @fires {CustomEvent<FeedbackEventDetail>} warning - Recoverable problem (skipped rows, invalid config). Mirrors the warning toast.
+ * @fires {CustomEvent<FeedbackEventDetail>} globe-error - Fatal problem (WebGL init, map asset load). Mirrors the error toast.
+ * @fires {CustomEvent<FeedbackEventDetail>} globe-warning - Recoverable problem (skipped rows, invalid config). Mirrors the warning toast.
  *
  * @cssprop --globe-chart-ocean-color - Ocean / sphere fill color.
  * @cssprop --globe-chart-empty-color - Fill for countries without data.
@@ -689,9 +691,72 @@ export class GlobeChart extends LitElement {
 		const nextIso = iso || null;
 		if (nextIso === this.lastHoverIso) return;
 		this.lastHoverIso = nextIso;
-		if (!feature || !nextIso) return;
+		if (!feature || !nextIso) {
+			// Pointer left the last hovered country — signal hover end.
+			this.dispatchEvent(
+				new CustomEvent('country-hover', { detail: null, bubbles: true, composed: true }),
+			);
+			return;
+		}
 		const entry = this.entryFromFeature(feature, nextIso);
 		if (entry) this.emitCountry('country-hover', entry);
+	}
+
+	/** Currently selected country ISO code (legend highlight), or `null`. */
+	get selectedIso(): string | null {
+		return this.legendController.selectedIso;
+	}
+
+	/**
+	 * Programmatically select a country: highlights its legend row and flies the
+	 * camera to it. Pass `null` to clear the selection. Does not emit
+	 * `country-select` — events are reserved for user interaction. Returns
+	 * `false` when the ISO code matches no loaded country polygon.
+	 */
+	select(iso: string | null): boolean {
+		if (iso == null) {
+			this.legendController.selectedIso = null;
+			return true;
+		}
+		const entry = this.entryFromIso(iso);
+		if (!entry) return false;
+		this.legendController.selectedIso = entry.iso;
+		this.scene.pointOfView(
+			{ lat: entry.lat, lng: entry.lng, altitude: this.resolvedConfig.camera.jumpAltitude },
+			this.motionMs(this.resolvedConfig.camera.durations.navigate, 'camera'),
+		);
+		return true;
+	}
+
+	/**
+	 * Fly the camera to a country (ISO code) or an explicit point of view,
+	 * without changing the selection. Returns `false` when an ISO code matches
+	 * no loaded country polygon. No-op until the globe is ready.
+	 */
+	flyTo(target: string | PointOfView, durationMs?: number): boolean {
+		const ms = this.motionMs(
+			durationMs ?? this.resolvedConfig.camera.durations.navigate,
+			'camera',
+		);
+		if (typeof target === 'string') {
+			const entry = this.entryFromIso(target);
+			if (!entry) return false;
+			this.scene.pointOfView(
+				{ lat: entry.lat, lng: entry.lng, altitude: this.resolvedConfig.camera.jumpAltitude },
+				ms,
+			);
+			return true;
+		}
+		this.scene.pointOfView({ ...target }, ms);
+		return true;
+	}
+
+	private entryFromIso(iso: string): LegendEntry | null {
+		const wanted = iso.trim().toUpperCase();
+		if (!wanted) return null;
+		const feature = this.countryFeatures.find((f) => isoOf(f) === wanted);
+		if (!feature) return null;
+		return this.entryFromFeature(feature, wanted);
 	}
 
 	/** Legend entry for a picked polygon; falls back to a zero-value entry for no-data countries. */
@@ -831,9 +896,10 @@ declare global {
 	}
 
 	interface HTMLElementEventMap {
-		ready: CustomEvent<undefined>;
 		'country-select': CustomEvent<CountryEventDetail>;
-		'country-hover': CustomEvent<CountryEventDetail>;
+		'country-hover': CustomEvent<CountryEventDetail | null>;
 		'legend-search': CustomEvent<LegendSearchEventDetail>;
+		'globe-error': CustomEvent<FeedbackEventDetail>;
+		'globe-warning': CustomEvent<FeedbackEventDetail>;
 	}
 }

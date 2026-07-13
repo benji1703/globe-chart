@@ -67,10 +67,16 @@ export class ToastController implements ReactiveController {
 			body: latest.body,
 			...definedProps({ details: latest.details, code: input.code }),
 		};
+		// Prefixed names: a bare `error` CustomEvent collides with the native
+		// error event (window listeners, React media onError) — renamed in 0.4.0.
 		if (latest.level === 'error') {
-			this.host.dispatchEvent(new CustomEvent('error', { detail, bubbles: true, composed: true }));
+			this.host.dispatchEvent(
+				new CustomEvent('globe-error', { detail, bubbles: true, composed: true }),
+			);
 		} else if (latest.level === 'warning') {
-			this.host.dispatchEvent(new CustomEvent('warning', { detail, bubbles: true, composed: true }));
+			this.host.dispatchEvent(
+				new CustomEvent('globe-warning', { detail, bubbles: true, composed: true }),
+			);
 		}
 
 		if (!persist && latest.level !== 'error') {

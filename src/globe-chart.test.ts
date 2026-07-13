@@ -392,8 +392,8 @@ describe('globe-chart', () => {
 		});
 		const globe = (el as unknown as { scene: { globe: FakeGlobe } }).scene.globe;
 
-		const hovered: string[] = [];
-		el.addEventListener('country-hover', (ev) => hovered.push(ev.detail.iso));
+		const hovered: (string | null)[] = [];
+		el.addEventListener('country-hover', (ev) => hovered.push(ev.detail?.iso ?? null));
 
 		const us = globe.polygons.find(
 			(p) => (p as { properties: { i: string } }).properties.i === 'US',
@@ -405,10 +405,53 @@ describe('globe-chart', () => {
 		globe.hoverHandler?.(us);
 		globe.hoverHandler?.(us); // same country again — no duplicate event
 		globe.hoverHandler?.(fr);
-		globe.hoverHandler?.(null); // pointer leaves land
+		globe.hoverHandler?.(null); // pointer leaves land — null detail signals hover end
 		globe.hoverHandler?.(us); // re-enter fires again
 
-		expect(hovered).toEqual(['US', 'FR', 'US']);
+		expect(hovered).toEqual(['US', 'FR', null, 'US']);
+		el.remove();
+	});
+
+	it('select() highlights and flies to a country without emitting country-select', async () => {
+		const el = await mountGlobe({
+			showLegend: true,
+			data: [
+				{ iso: 'US', value: 1200 },
+				{ iso: 'FR', value: 280 },
+			],
+		});
+		const globe = (el as unknown as { scene: { globe: FakeGlobe } }).scene.globe;
+		const selected: string[] = [];
+		el.addEventListener('country-select', (ev) => selected.push(ev.detail.iso));
+
+		expect(el.select('fr')).toBe(true); // case-insensitive
+		expect(el.selectedIso).toBe('FR');
+		expect((globe.lastPointOfView as { lng: number }).lng).toBeGreaterThan(0);
+		expect(selected).toEqual([]);
+
+		expect(el.select('XX')).toBe(false);
+		expect(el.selectedIso).toBe('FR');
+
+		expect(el.select(null)).toBe(true);
+		expect(el.selectedIso).toBeNull();
+		el.remove();
+	});
+
+	it('flyTo() accepts an ISO code or a point of view', async () => {
+		const el = await mountGlobe({ data: [{ iso: 'US', value: 10 }] });
+		await vi.waitFor(() => {
+			const scene = (el as unknown as { scene: { globe: FakeGlobe | null } }).scene;
+			expect(scene.globe?.hoverHandler).toBeTypeOf('function');
+		});
+		const globe = (el as unknown as { scene: { globe: FakeGlobe } }).scene.globe;
+
+		expect(el.flyTo('US')).toBe(true);
+		expect(globe.lastPointOfView).toMatchObject({ lat: expect.any(Number), lng: expect.any(Number) });
+
+		expect(el.flyTo({ lat: 10, lng: 20, altitude: 2 }, 0)).toBe(true);
+		expect(globe.lastPointOfView).toMatchObject({ lat: 10, lng: 20, altitude: 2 });
+
+		expect(el.flyTo('ZZ')).toBe(false);
 		el.remove();
 	});
 
@@ -431,7 +474,9 @@ describe('globe-chart', () => {
 		const globe = (el as unknown as { scene: { globe: FakeGlobe } }).scene.globe;
 
 		const hovered: string[] = [];
-		el.addEventListener('country-hover', (ev) => hovered.push(ev.detail.iso));
+		el.addEventListener('country-hover', (ev) => {
+			if (ev.detail) hovered.push(ev.detail.iso);
+		});
 		const us = globe.polygons.find(
 			(p) => (p as { properties: { i: string } }).properties.i === 'US',
 		) as object;

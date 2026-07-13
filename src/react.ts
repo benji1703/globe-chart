@@ -31,10 +31,10 @@ export const GlobeChart = createComponent({
 	events: {
 		onReady: 'ready' as EventName<CustomEvent<undefined>>,
 		onCountrySelect: 'country-select' as EventName<CustomEvent<CountryEventDetail>>,
-		onCountryHover: 'country-hover' as EventName<CustomEvent<CountryEventDetail>>,
+		onCountryHover: 'country-hover' as EventName<CustomEvent<CountryEventDetail | null>>,
 		onLegendSearch: 'legend-search' as EventName<CustomEvent<LegendSearchEventDetail>>,
-		onError: 'error' as EventName<CustomEvent<FeedbackEventDetail>>,
-		onWarning: 'warning' as EventName<CustomEvent<FeedbackEventDetail>>,
+		onError: 'globe-error' as EventName<CustomEvent<FeedbackEventDetail>>,
+		onWarning: 'globe-warning' as EventName<CustomEvent<FeedbackEventDetail>>,
 	},
 });
 

@@ -121,10 +121,11 @@ export interface LegendSearchEventDetail {
 export interface GlobeChartEventMap {
 	ready: CustomEvent<undefined>;
 	'country-select': CustomEvent<CountryEventDetail>;
-	'country-hover': CustomEvent<CountryEventDetail>;
+	/** `detail` is `null` when the pointer leaves the last hovered country. */
+	'country-hover': CustomEvent<CountryEventDetail | null>;
 	'legend-search': CustomEvent<LegendSearchEventDetail>;
-	error: CustomEvent<FeedbackEventDetail>;
-	warning: CustomEvent<FeedbackEventDetail>;
+	'globe-error': CustomEvent<FeedbackEventDetail>;
+	'globe-warning': CustomEvent<FeedbackEventDetail>;
 }
 
 export function assertNever(value: never, message = 'Unexpected value'): never {

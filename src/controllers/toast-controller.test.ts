@@ -22,11 +22,11 @@ function makeHost() {
 }
 
 describe('ToastController', () => {
-	it('pushes a toast, requests an update, and dispatches a warning event', () => {
+	it('pushes a toast, requests an update, and dispatches a globe-warning event', () => {
 		vi.useFakeTimers();
 		const host = makeHost();
 		const dispatched: CustomEvent[] = [];
-		host.addEventListener('warning', (e) => dispatched.push(e as CustomEvent));
+		host.addEventListener('globe-warning', (e) => dispatched.push(e as CustomEvent));
 		const controller = new ToastController(host);
 
 		controller.notify({ level: 'warning', title: 'Heads up', body: 'body text' }, toastsConfig);
@@ -58,6 +58,16 @@ describe('ToastController', () => {
 		controller.notify({ level: 'info', title: 'Empty', body: 'x', code: 'empty-data', once: true }, toastsConfig);
 		controller.notify({ level: 'info', title: 'Empty', body: 'x', code: 'empty-data', once: true }, toastsConfig);
 		expect(controller.items).toHaveLength(1);
+	});
+
+	it('dispatches globe-error for error-level toasts', () => {
+		const host = makeHost();
+		const dispatched: CustomEvent[] = [];
+		host.addEventListener('globe-error', (e) => dispatched.push(e as CustomEvent));
+		const controller = new ToastController(host);
+		controller.notify({ level: 'error', title: 'Bad', body: 'b', code: 'x' }, toastsConfig);
+		expect(dispatched).toHaveLength(1);
+		expect(dispatched[0]?.detail).toMatchObject({ level: 'error', title: 'Bad', code: 'x' });
 	});
 
 	it('toggles details and dismisses by id', () => {

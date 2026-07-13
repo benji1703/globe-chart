@@ -23,12 +23,13 @@ Pages (https://benji1703.github.io/globe-chart/) on every push to `main`.
 - `scene/` — three/globe.gl side: `globe-scene.ts` (renderer lifecycle,
   idle-pause), `choropleth-layer.ts` (polygon paint), `materials.ts` (caches)
 - `ui/` — legend-view, toast-view, `styles/` (tokens + per-part styles)
-- `load-countries.ts` — TopoJSON fetch; asset path built from opaque string
-  parts ON PURPOSE so Vite neither inlines a data: URL nor emits a duplicate
-  hashed asset. Countries JSON must sit beside the emitted JS (dist/,
-  demo/dist/assets/, storybook-static/assets/ — each build has a copy step).
-  Consumers can bypass all of this: `config.globe.topologyUrl` (custom URL) or
-  the `countries` property (pre-loaded features/topology).
+- `load-countries.ts` — since 0.4.0 the packaged topology loads via dynamic
+  `import('./data/ne_110m_admin_0_countries.json')`: bundlers code-split it
+  into a lazy JS chunk with zero consumer config. NO asset copy steps exist
+  anymore (dist, demo, storybook, and the four sibling demos all dropped
+  theirs). `config.globe.topologyUrl` fetches a custom topology instead; the
+  `countries` property supplies features/topology directly. The raw JSON is
+  still copied to dist/ for self-hosting consumers.
 - `react.ts` — `globe-chart/react` subpath: `@lit/react` createComponent with
   typed event callbacks. `react` is an optional peerDependency.
 - `stubs/` (repo root, published as `globe-chart/stubs/*`) — build-time
@@ -61,9 +62,9 @@ dead weight for this component.
    `config.globe.maxPixelRatio` (default 1), antialias off, low-power GPU
    hint. Don't "fix" the paused animation loop — it's intentional.
 4. **Demo loading is parallelized at build time**: a vite plugin injects
-   `modulepreload` for the globe.gl/three.core/globe-chart chunks and a
-   `preload as=fetch` for the countries JSON into demo/dist/index.html. Don't
-   add static preload links to demo/index.html source — hashes change.
+   `modulepreload` for the globe.gl/three.core/globe-chart/countries chunks
+   into demo/dist/index.html. Don't add static preload links to
+   demo/index.html source — hashes change.
 5. **Don't use lit's `isServer` for SSR guards** — vitest (and consumers' test
    setups) resolve lit through the `node` export condition, so `isServer` is
    `true` under jsdom tests and silently disables the guarded code. Use
@@ -91,10 +92,13 @@ Repo owner GitHub identity: benji1703 (gh CLI). Never commit `.omc/` or
 - Library externalizes `lit`, `globe.gl`, `three`, `topojson-client`, `react`,
   `@lit/react` (vite.config.ts rollup externals) — consumers bundle them.
 - Build is multi-entry (`globe-chart` + `react`); shared code lands in
-  `dist/globe-chart-internal.js` (chunkFileNames pinned, NO subdir/hash — the
-  countries JSON is fetched relative to the chunk containing load-countries).
-  `sideEffects` uses `./dist/*.js` so bundlers never prune the
+  `dist/globe-chart-internal.js` and the countries data in
+  `dist/ne_110m_admin_0_countries-internal.js` (chunkFileNames pinned, no
+  subdir/hash). `sideEffects` uses `./dist/*.js` so bundlers never prune the
   `customElements.define` chunk.
+- Breaking names since 0.4.0: events `globe-error`/`globe-warning` (were
+  `error`/`warning`), `country-hover` detail nullable, imperative
+  `select()`/`flyTo()`/`selectedIso` public API.
 - `npm run build` first runs `cem analyze` → `custom-elements.json` (published,
   gitignored; `customElements` field in package.json). Keep the JSDoc
   `@fires`/`@cssprop` block on the GlobeChart class in sync with reality —

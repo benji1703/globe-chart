@@ -29,7 +29,10 @@ Country outlines come from [Natural Earth](https://www.naturalearthdata.com/)
 npm install globe-chart
 ```
 
-`lit`, `globe.gl`, and `three` are installed as dependencies of this package.
+That's the whole setup. `lit`, `globe.gl`, and `three` install as dependencies
+of this package, and the country map ships inside the package as a lazily
+code-split JS module — no asset copying, no loader plugins, no CDN fetch, no
+bundler configuration.
 
 ### Shrink your bundle (recommended)
 
@@ -91,7 +94,7 @@ document.body.append(el);
 | Property            | Attribute            | Default   | Description                                      |
 | ------------------- | -------------------- | --------- | ------------------------------------------------ |
 | `data`              | —                    | `[]`      | Rows to plot                                     |
-| `countries`         | —                    | `null`    | Host-supplied country polygons (GeoJSON features or TopoJSON) — skips the packaged asset fetch |
+| `countries`         | —                    | `null`    | Host-supplied country polygons (GeoJSON features or TopoJSON) — replaces the packaged map |
 | `isoField`          | `iso-field`          | `'iso'`   | ISO country code field                           |
 | `valueField`        | `value-field`        | `'value'` | Numeric value field                              |
 | `nameField`         | `name-field`         | `'name'`  | Optional display name field on rows              |
@@ -154,15 +157,37 @@ For event-driven backends (no `provider`), listen for `legend-search` and set
 | ---------------- | ------------------------------------------- |
 | `ready`          | —                                           |
 | `country-select` | `{ iso, name, value, color… }`              |
-| `country-hover`  | `{ iso, name, value, color… }` (fires once per country under the pointer) |
+| `country-hover`  | `{ iso, name, value, color… }` — fires once per country under the pointer, `null` when the pointer leaves the last country |
 | `legend-search`  | `{ query, signal }` (remote/hybrid search)  |
-| `error`          | `{ title, body, details… }`                 |
-| `warning`        | `{ title, body, details… }`                 |
+| `globe-error`    | `{ title, body, details… }`                 |
+| `globe-warning`  | `{ title, body, details… }`                 |
 
 All events are `CustomEvent`s that bubble and cross the shadow boundary. In
 TypeScript, `addEventListener` on a `GlobeChart` element is fully typed via
 `GlobeChartEventMap` — `document.querySelector('globe-chart')` already returns
 the right type through `HTMLElementTagNameMap`.
+
+> Migrating from 0.3.x: `error` → `globe-error`, `warning` → `globe-warning`
+> (the bare names collided with the native `error` event), and `country-hover`
+> now fires with `detail: null` on hover end — check `e.detail` before use.
+
+### Imperative API
+
+For host-driven navigation (deep links, "show me X" buttons, dashboards):
+
+```ts
+const el = document.querySelector('globe-chart')!;
+
+el.select('FR');   // highlight France in the legend + fly the camera to it
+el.select(null);   // clear the selection
+el.flyTo('JP');    // camera only — selection unchanged
+el.flyTo({ lat: 48.8, lng: 2.3, altitude: 1.5 }, 800);
+el.selectedIso;    // 'FR' | null — current selection
+```
+
+`select()` / `flyTo()` return `false` when the ISO code matches no loaded
+country. Programmatic selection does **not** emit `country-select` — events are
+reserved for user interaction, so controlled wrappers can't loop.
 
 ### Theming
 
@@ -182,29 +207,28 @@ CSS custom properties on the host:
 ### Feedback
 
 Problems surface as in-component toasts (skipped rows, init failures, empty data)
-and matching `error` / `warning` DOM events. Disable UI with
+and matching `globe-error` / `globe-warning` DOM events. Disable UI with
 `config.toasts.enabled = false` if the host app handles events only.
 
-### Countries map asset
+### Countries map data
 
-The component fetches its Natural Earth TopoJSON at runtime. By default the
-file is resolved **beside the built module**, which works out of the box with
-Vite, webpack, and most bundlers (they copy `dist/ne_110m_admin_0_countries.json`
-along with the JS). If your setup serves assets elsewhere, you have two overrides:
+The Natural Earth country outlines ship **inside the package** as a lazily
+code-split JS module (~26 kB gzip) — every bundler splits it into its own chunk
+automatically, so there is nothing to configure, copy, or host. Two overrides
+when you want different geometry:
 
 ```ts
-// 1. Point at a hosted copy (CDN, /assets, …)
-el.config = { globe: { topologyUrl: '/assets/ne_110m_admin_0_countries.json' } };
+// 1. Fetch a custom topology at runtime (CDN, /assets, higher-resolution map…)
+el.config = { globe: { topologyUrl: '/assets/my-countries.json' } };
 
-// 2. Skip the fetch entirely — supply polygons yourself
-import { loadCountryFeatures } from 'globe-chart';
-el.countries = await loadCountryFeatures('/assets/ne_110m_admin_0_countries.json');
-// or pass a TopoJSON topology / your own GeoJSON features directly
+// 2. Supply polygons yourself — a TopoJSON topology or GeoJSON features
+el.countries = myTopologyOrFeatures;
 ```
 
 `loadCountryFeatures` and `featuresFromTopology` are exported for hosts that
-want to fetch/preload the asset themselves (e.g. Angular `provideAppInitializer`,
-a `<link rel="preload" as="fetch">`, or a bundler `?url` import).
+want to preload or transform the data themselves (e.g. Angular
+`provideAppInitializer`). The raw TopoJSON is also published at
+`globe-chart/dist/ne_110m_admin_0_countries.json` for self-hosting.
 
 ## Framework integration
 
@@ -278,9 +302,8 @@ export class WorldMapComponent {
 }
 ```
 
-No `angular.json` asset config is required with the default setup — but if your
-build relocates assets, use `config.globe.topologyUrl` (see “Countries map
-asset” above) instead of copying files around.
+No `angular.json` asset configuration is needed — the country map is a normal
+lazily-loaded JS module, so the Angular build handles it like any other chunk.
 
 ### Vue 3
 

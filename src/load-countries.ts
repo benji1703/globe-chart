@@ -52,28 +52,21 @@ export function featuresFromTopology(topology: CountriesTopology): GeoFeature[] 
 }
 
 /**
- * Resolve the packaged TopoJSON URL.
- * Path is built dynamically so Vite does not rewrite it into an inlined data: URL
- * (which blew the npm bundle past 170KB). The JSON is copied beside the built
- * module (`npm run build` / demo `closeBundle` plugin).
- */
-function countriesJsonUrl(): string {
-	const file = ['ne_110m_admin_0_countries', 'json'].join('.');
-	// Dev: resolve next to this source module (…/src/data/…).
-	// Prod: JSON sits beside the emitted JS (dist/ or demo/dist/assets/).
-	// The path is assembled from opaque parts so Vite's static analysis does
-	// not inline it as a data: URL or emit a duplicate hashed copy.
-	const dir = import.meta.env?.DEV ? ['.', 'data', ''].join('/') : '';
-	return new URL(dir + file, import.meta.url).href;
-}
-
-/**
- * Load countries TopoJSON via fetch. With no argument the packaged asset is
- * resolved beside the built module; pass `url` to load from a custom location
- * (see `config.globe.topologyUrl`).
+ * Load country features. With no argument the packaged topology is pulled in
+ * via dynamic `import()` — every bundler code-splits it into a lazy chunk with
+ * zero consumer configuration (no asset-copy step, no URL resolution). Pass
+ * `url` to fetch a custom topology instead (see `config.globe.topologyUrl`).
  */
 export async function loadCountryFeatures(url?: string): Promise<GeoFeature[]> {
-	const res = await fetch(url || countriesJsonUrl());
+	if (!url) {
+		const mod: { default: unknown } = await import('./data/ne_110m_admin_0_countries.json');
+		const topology = mod.default;
+		if (!isCountriesTopology(topology)) {
+			throw new Error('Packaged country map is not TopoJSON');
+		}
+		return featuresFromTopology(topology);
+	}
+	const res = await fetch(url);
 	if (!res.ok) {
 		throw new Error(`Country map asset failed to load (${res.status})`);
 	}

@@ -1,4 +1,3 @@
-import { copyFileSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -30,16 +29,12 @@ export default defineConfig({
 		outDir: 'dist',
 		emptyOutDir: true,
 		modulePreload: { polyfill: true },
-		assetsInlineLimit: (filePath: string) => {
-			if (filePath.includes('ne_110m_admin_0_countries')) return false;
-			return undefined;
-		},
 	},
 	plugins: [
 		{
 			// Start the heavy downloads at HTML parse time instead of after
-			// main.ts executes: modulepreload the lazy globe chunks and preload
-			// the country topology JSON.
+			// main.ts executes: modulepreload the lazy globe chunks and the
+			// code-split country topology chunk.
 			name: 'preload-globe-chunks',
 			enforce: 'post',
 			transformIndexHtml(_html, ctx) {
@@ -48,7 +43,11 @@ export default defineConfig({
 				const tags: HtmlTagDescriptor[] = [];
 				for (const [fileName, chunk] of Object.entries(bundle)) {
 					if (chunk.type !== 'chunk') continue;
-					if (/^assets\/(globe\.gl|three\.core|globe-chart)-/.test(fileName)) {
+					if (
+						/^assets\/(globe\.gl|three\.core|globe-chart|ne_110m_admin_0_countries)-/.test(
+							fileName,
+						)
+					) {
 						tags.push({
 							tag: 'link',
 							attrs: { rel: 'modulepreload', crossorigin: true, href: `./${fileName}` },
@@ -56,29 +55,7 @@ export default defineConfig({
 						});
 					}
 				}
-				tags.push({
-					tag: 'link',
-					attrs: {
-						rel: 'preload',
-						href: './assets/ne_110m_admin_0_countries.json',
-						as: 'fetch',
-						type: 'application/json',
-						crossorigin: true,
-					},
-					injectTo: 'head',
-				});
 				return tags;
-			},
-		},
-		{
-			name: 'copy-countries-topojson',
-			closeBundle() {
-				const outDir = resolve(root, 'dist/assets');
-				mkdirSync(outDir, { recursive: true });
-				copyFileSync(
-					resolve(repoRoot, 'src/data/ne_110m_admin_0_countries.json'),
-					resolve(outDir, 'ne_110m_admin_0_countries.json'),
-				);
 			},
 		},
 	],
