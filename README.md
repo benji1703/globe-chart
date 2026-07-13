@@ -14,6 +14,39 @@ Country outlines come from [Natural Earth](https://www.naturalearthdata.com/)
 
 [![globe-chart dark theme demo with country choropleth and hover tooltip](https://raw.githubusercontent.com/benji1703/globe-chart/main/docs/images/demo-dark.png)](https://benji1703.github.io/globe-chart/)
 
+## Why does this exist?
+
+npm already has great globe *renderers* — this package reuses them
+([globe.gl](https://globe.gl) / three.js do the 3D work). What it adds is the
+gap between "globe rendering API" and "drop-in choropleth chart", which no
+existing package covered:
+
+- **One tag, every framework.** `react-globe.gl` and friends are
+  framework-locked wrappers around the raw API. `<globe-chart>` is a web
+  component: the same element works in Angular, React, Vue, Svelte, or plain
+  HTML, with a typed React wrapper (`globe-chart/react`) on top.
+- **A chart, not a canvas.** globe.gl gives you polygons and accessors; it has
+  no notion of legend, tooltips, color scales, ISO code matching, number
+  formatting, theming, or events. That product layer is what this component
+  implements — pass `{ iso, value }` pairs, get a finished choropleth.
+- **Embed-friendly performance defaults.** Out of the box, globe.gl runs a
+  requestAnimationFrame loop forever (even off-screen), renders at full device
+  pixel ratio, and animates its first paint into one long main-thread task.
+  globe-chart pauses rendering when idle or hidden, caps DPR, defers pointer
+  raycasts until after first paint, and staggers startup so it can sit on a
+  dashboard without draining batteries or tanking Lighthouse.
+- **Bundle size fixed at the source.** `three-globe` statically imports the
+  three.js WebGPU renderer, TSL, and h3-js for layers a choropleth never uses
+  — ~250 kB gzip of dead weight no consumer can tree-shake away. The stubs
+  shipped as `globe-chart/stubs/*` (see below) cut the globe.gl chunk roughly
+  in half.
+- **Lifecycle correctness.** Upstream disposes GPU materials it doesn't own,
+  which breaks the second mount in SPAs and Storybook. globe-chart caches and
+  self-heals these resources so remounting just works.
+- **Data included.** A slimmed Natural Earth country map ships inside the
+  package as a lazily code-split module — no topology files to copy, host, or
+  configure in your bundler.
+
 ## License
 
 **Dual model**
