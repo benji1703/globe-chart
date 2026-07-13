@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { DataRow } from './core/types.js';
+import type { DataRow, GeoFeature } from './core/types.js';
+import type { CountriesTopology } from './load-countries.js';
 
 class FakeResizeObserver {
 	observe() {
@@ -408,6 +409,59 @@ describe('globe-chart', () => {
 		globe.hoverHandler?.(us); // re-enter fires again
 
 		expect(hovered).toEqual(['US', 'FR', 'US']);
+		el.remove();
+	});
+
+	it('rebinds country-hover after a remount (SPA route back)', async () => {
+		const el = await mountGlobe({ data: [{ iso: 'US', value: 10 }] });
+		await vi.waitFor(() => {
+			const scene = (el as unknown as { scene: { globe: FakeGlobe | null } }).scene;
+			expect(scene.globe?.hoverHandler).toBeTypeOf('function');
+		});
+		const firstGlobe = (el as unknown as { scene: { globe: FakeGlobe } }).scene.globe;
+
+		el.remove();
+		document.body.appendChild(el);
+
+		await vi.waitFor(() => {
+			const scene = (el as unknown as { scene: { globe: FakeGlobe | null } }).scene;
+			expect(scene.globe).not.toBe(firstGlobe);
+			expect(scene.globe?.hoverHandler).toBeTypeOf('function');
+		});
+		const globe = (el as unknown as { scene: { globe: FakeGlobe } }).scene.globe;
+
+		const hovered: string[] = [];
+		el.addEventListener('country-hover', (ev) => hovered.push(ev.detail.iso));
+		const us = globe.polygons.find(
+			(p) => (p as { properties: { i: string } }).properties.i === 'US',
+		) as object;
+		globe.hoverHandler?.(us);
+		expect(hovered).toEqual(['US']);
+		el.remove();
+	});
+
+	it('shows an error toast when the countries property yields no polygons', async () => {
+		const el = await mountGlobe({ data: [{ iso: 'US', value: 10 }] });
+		el.countries = [{ notAFeature: true } as unknown as GeoFeature];
+		await el.updateComplete;
+		await vi.waitFor(() => {
+			expect(el.shadowRoot?.querySelector('.toast--error')).not.toBeNull();
+		});
+		expect(el.shadowRoot?.textContent).toMatch(/map data missing/i);
+		el.remove();
+	});
+
+	it('survives a malformed countries topology without throwing', async () => {
+		const el = await mountGlobe({ data: [{ iso: 'US', value: 10 }] });
+		el.countries = {
+			type: 'Topology',
+			objects: { countries: { type: 'GeometryCollection', geometries: [{ type: 'Polygon', arcs: [[999]] }] } },
+			arcs: [],
+		} as unknown as CountriesTopology;
+		await el.updateComplete;
+		await vi.waitFor(() => {
+			expect(el.shadowRoot?.querySelector('.toast--error')).not.toBeNull();
+		});
 		el.remove();
 	});
 

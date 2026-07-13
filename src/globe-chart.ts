@@ -281,7 +281,7 @@ export class GlobeChart extends LitElement {
 		}
 
 		if (changed.has('countries') && this.scene.globe) {
-			void this.syncCountries();
+			void this.syncCountries(changed.has('loading'));
 			return;
 		}
 
@@ -401,7 +401,9 @@ export class GlobeChart extends LitElement {
 				return;
 			}
 
-			this.countryFeatures = countries;
+			// Re-resolve provided countries: the property may have been set while
+			// the fetch above was in flight (host frameworks bind props async).
+			this.countryFeatures = this.providedCountries() ?? countries;
 			if (!this.countryFeatures.length) {
 				this.toastController.notify(
 					{
@@ -453,7 +455,12 @@ export class GlobeChart extends LitElement {
 	private providedCountries(): GeoFeature[] | null {
 		if (this.countries == null) return null;
 		if (Array.isArray(this.countries)) return this.countries.filter(isGeoFeature);
-		return featuresFromTopology(this.countries);
+		try {
+			return featuresFromTopology(this.countries);
+		} catch {
+			// Malformed topology (bad arcs, wrong shape) — surfaced via the empty-features toast.
+			return [];
+		}
 	}
 
 	private async resolveCountries(): Promise<GeoFeature[]> {
@@ -463,11 +470,22 @@ export class GlobeChart extends LitElement {
 	}
 
 	/** React to `countries` property changes after the globe exists. */
-	private async syncCountries() {
+	private async syncCountries(loadingChanged = false) {
 		const provided = this.providedCountries();
 		if (provided) {
 			this.countryFeatures = provided;
-			this.applyVisual(false);
+			if (!provided.length) {
+				this.toastController.notify(
+					{
+						level: 'error',
+						title: 'Map data missing',
+						body: 'The `countries` property produced no polygons. Pass GeoJSON features or a countries TopoJSON topology.',
+						code: 'geojson-empty',
+					},
+					this.resolvedConfig.toasts,
+				);
+			}
+			this.applyVisual(loadingChanged);
 			return;
 		}
 		const generation = this.createGeneration;
@@ -477,7 +495,7 @@ export class GlobeChart extends LitElement {
 			);
 			if (generation !== this.createGeneration || !this.isConnected) return;
 			this.countryFeatures = features;
-			this.applyVisual(false);
+			this.applyVisual(loadingChanged);
 		} catch (err) {
 			if (generation !== this.createGeneration || !this.isConnected) return;
 			this.toastController.notify(
@@ -493,7 +511,30 @@ export class GlobeChart extends LitElement {
 		}
 	}
 
+	private valueIndexCache: {
+		data: DataRow[];
+		length: number;
+		isoField: string;
+		valueField: string;
+		index: ReturnType<typeof buildValueIndex>;
+	} | null = null;
+
+	/**
+	 * Memoized on `data` identity (+ length, to survive in-place pushes),
+	 * `isoField` and `valueField`. Hover/click/render all hit this path — with
+	 * large data arrays an uncached rebuild per pointer crossing is visible work.
+	 */
 	private computeIndex() {
+		const cache = this.valueIndexCache;
+		if (
+			cache &&
+			cache.data === this.data &&
+			cache.length === this.data.length &&
+			cache.isoField === this.isoField &&
+			cache.valueField === this.valueField
+		) {
+			return cache.index;
+		}
 		const parsed = parseDataRows(this.data);
 		if (parsed.invalid) {
 			this.toastController.notify(
@@ -507,11 +548,19 @@ export class GlobeChart extends LitElement {
 				this.resolvedConfig.toasts,
 			);
 		}
-		return buildValueIndex({
+		const index = buildValueIndex({
 			data: parsed.rows,
 			isoField: this.isoField,
 			valueField: this.valueField,
 		});
+		this.valueIndexCache = {
+			data: this.data,
+			length: this.data.length,
+			isoField: this.isoField,
+			valueField: this.valueField,
+			index,
+		};
+		return index;
 	}
 
 	private currentLegendEntries(): LegendEntry[] {
@@ -647,12 +696,17 @@ export class GlobeChart extends LitElement {
 
 	/** Legend entry for a picked polygon; falls back to a zero-value entry for no-data countries. */
 	private entryFromFeature(feature: GeoFeature, iso: string): LegendEntry | null {
-		const fromLegend = this.currentLegendEntries().find((e) => e.iso === iso);
+		const index = this.computeIndex();
+		const colors = this.themeController.resolve(this.resolvedConfig.colors);
+		const fromLegend = computeLegendEntries({
+			index,
+			colors,
+			countryFeatures: this.countryFeatures,
+			nameField: this.nameField,
+		}).find((e) => e.iso === iso);
 		if (fromLegend) return fromLegend;
 		const center = boundingBoxCenter(feature.geometry);
 		if (!center) return null;
-		const index = this.computeIndex();
-		const colors = this.themeController.resolve(this.resolvedConfig.colors);
 		const value = index.valueMap[iso] ?? 0;
 		return {
 			iso,
@@ -760,6 +814,8 @@ export class GlobeChart extends LitElement {
 		this.globeCreating = false;
 		this.hasPaintedPolygons = false;
 		this.polygonClickBound = false;
+		this.polygonHoverBound = false;
+		this.lastHoverIso = null;
 		this.hasCentered = false;
 		this.readyDispatched = false;
 		clearTimeout(this.revealTimer);
